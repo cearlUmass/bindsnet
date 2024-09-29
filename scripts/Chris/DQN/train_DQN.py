@@ -125,7 +125,6 @@ def run_episode(env, policy_net, device, max_steps, eps=0):
     else:
       next_state = torch.tensor(observation, dtype=torch.float32, device=device).unsqueeze(0)
 
-    # Move to the next state
     state = next_state
 
     if terminated:
