@@ -60,6 +60,7 @@ class STDP_RL_Model(Network):
 
     ## STDP-RL Parameters ##
     self.eligibility_trace = torch.zeros(in_size, out_size, device=device)
+    self.eligibility = torch.zeros(in_size, out_size, device=device)
     self.a_plus = a_plus
     self.a_minus = a_minus
     self.tc_e_trace = tc_e_trace
@@ -68,10 +69,15 @@ class STDP_RL_Model(Network):
   def STDP_RL(self, reward, in_spikes, out_spikes):
     in_activity = in_spikes.squeeze().sum(dim=0)
     out_activity = out_spikes.squeeze().sum(dim=0)
-    STDP_matrix = torch.outer(in_activity*self.a_plus, out_activity) + \
+    self.eligibility = torch.outer(in_activity*self.a_plus, out_activity) + \
                   torch.outer(in_activity, out_activity*self.a_minus)
-    self.weights.value += STDP_matrix * reward * self.lr
 
+    # Update eligibility trace
+    self.eligibility_trace *= np.exp(-1/self.tc_e_trace)
+    self.eligibility_trace += self.eligibility / self.tc_e_trace
+
+    # Update weights
+    self.weights.value += self.eligibility_trace * reward * self.lr
 
 # Select action using epsilon-greedy policy
 def select_action(assoc_spikes, sim_time, out_size, eps, model, env):

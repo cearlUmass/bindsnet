@@ -71,7 +71,7 @@ if __name__ == '__main__':
   A_MINUS = 0.1
   TC_E_TRACE = 10
   SIM_TIME = 50
-  ENV_TRACE_LENGTH = 10
+  ENV_TRACE_LENGTH = 5
   out_hyperparams = {
     'thresh_out': -55,
     'theta_plus_out': 0,
