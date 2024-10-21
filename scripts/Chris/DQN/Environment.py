@@ -105,7 +105,7 @@ class Maze_Environment():
 
     # Check if action runs into wall
     if action not in self.agent_cell.open_walls:
-      self.path_history.append((self.agent_cell.coordinates, -0.01, False, {}))
+      self.path_history.append((self.agent_cell.coordinates, -1, False, {}))
       return self.agent_cell, -1, False, {}
 
     # Move agent

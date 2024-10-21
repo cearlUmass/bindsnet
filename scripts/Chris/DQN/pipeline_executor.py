@@ -58,7 +58,6 @@ if __name__ == '__main__':
   # recalled_mem_preprocessing(WIDTH, HEIGHT, PLOT)
 
   ## Train STDP-RL ##
-  LR = 0.0005
   EPS_START = 0.9
   EPS_END = 0.05
   DECAY_INTENSITY = 3  # higher
@@ -67,11 +66,13 @@ if __name__ == '__main__':
   MAX_TOTAL_STEPS = 5000
   INPUT_SIZE = EXC_SIZE # + INH_SIZE
   OUT_SIZE = 80 # 4 x 20
-  A_PLUS = 0.1
-  A_MINUS = 0.1
+  A_PLUS = 0.2
+  A_MINUS = -0.1
   TC_E_TRACE = 10
   SIM_TIME = 50
   ENV_TRACE_LENGTH = 5
+  LR = 0.5
+  GAMMA = 0.7
   out_hyperparams = {
     'thresh_out': -55,
     'theta_plus_out': 0,
@@ -82,7 +83,7 @@ if __name__ == '__main__':
   }
   train_STDP_RL(HEIGHT, WIDTH, MAX_TOTAL_STEPS, MAX_STEPS_PER_EP, EPS_START, EPS_END, DECAY_INTENSITY,
                 INPUT_SIZE, OUT_SIZE, SIM_TIME, out_hyperparams, ENV_TRACE_LENGTH,
-                A_PLUS, A_MINUS, TC_E_TRACE, LR, device='cpu', plot=PLOT)
+                A_PLUS, A_MINUS, TC_E_TRACE, LR, GAMMA, device='cpu', plot=PLOT)
 
   ## Train DQN ##
   # LR = 0.01

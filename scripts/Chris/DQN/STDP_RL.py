@@ -19,7 +19,7 @@ from scripts.Chris.DQN.Memory import sparsify
 
 class STDP_RL_Model(Network):
   def __init__(self, in_size, out_size, hyper_params, w_in_out, w_out_out, a_plus, a_minus, tc_e_trace,
-               learning_rate, device='cpu'):
+               learning_rate, gamma, device='cpu'):
     super().__init__()
 
     ## Layers ##
@@ -66,18 +66,51 @@ class STDP_RL_Model(Network):
     self.tc_e_trace = tc_e_trace
     self.lr = learning_rate
 
-  def STDP_RL(self, reward, in_spikes, out_spikes):
+    ## Q-Learning parameters ##
+    self.gamma = gamma
+    self.q_table = {}
+
+  def STDP_RL(self, update_mod, in_spikes, out_spikes):
     in_activity = in_spikes.squeeze().sum(dim=0)
     out_activity = out_spikes.squeeze().sum(dim=0)
     self.eligibility = torch.outer(in_activity*self.a_plus, out_activity) + \
                   torch.outer(in_activity, out_activity*self.a_minus)
 
     # Update eligibility trace
-    self.eligibility_trace *= np.exp(-1/self.tc_e_trace)
-    self.eligibility_trace += self.eligibility / self.tc_e_trace
+    # self.eligibility_trace *= np.exp(-1/self.tc_e_trace)
+    # self.eligibility_trace += self.eligibility / self.tc_e_trace
 
     # Update weights
-    self.weights.value += self.eligibility_trace * reward * self.lr
+    self.weights.value += self.eligibility * update_mod # * 0.1
+
+  def update_table(self, state, action, next_state, reward):
+    # Preprocess state for simpler indexing
+    # Sum spikes -> get sorted indices
+    action = action.item()
+    if state not in self.q_table:
+      self.q_table[state] = np.zeros(4)    # 4 moves
+      self.q_table[state][action] = self.lr * reward
+      return self.lr * reward
+    else:
+      next_state_val = 0 if next_state not in self.q_table else max(self.q_table[next_state])
+      old_val = self.q_table[state][action]
+      self.q_table[state][action] *= (1 - self.lr)  # Decay
+      self.q_table[state][action] += self.lr * (reward + self.gamma * next_state_val)  # Update
+      delta = self.q_table[state][action] - old_val
+      opt_act = np.argmax(self.q_table[state])
+      return delta
+
+  def plot(self):
+    fig = plt.figure(figsize=(12, 6))
+    gs = fig.add_gridspec(1, 2)
+    ax1 = fig.add_subplot(gs[0, 0])
+    ax2 = fig.add_subplot(gs[0, 1])
+    im = ax1.imshow(self.weights.value, cmap='hot', interpolation='nearest')
+    fig.colorbar(im, ax=ax1)
+    im = ax2.imshow(self.eligibility, cmap='hot', interpolation='nearest')
+    fig.colorbar(im, ax=ax2)
+    plt.show()
+
 
 # Select action using epsilon-greedy policy
 def select_action(assoc_spikes, sim_time, out_size, eps, model, env):
@@ -108,9 +141,11 @@ def run_episode(env, model, in_size, out_size, max_steps, sim_time, eps=0, learn
   state, coords, _ = env.reset()
   state = state[:, 0:in_size]
   history = []
+  model.plot()
+  plt.show()
   for t in count():
     action, out_spikes = select_action(state, sim_time, out_size, eps, model, env)
-    observation, reward, terminated, coords, _ = env.step(action)
+    observation, reward, terminated, next_state_coords, _ = env.step(action)
     # reward = torch.tensor([reward], device=device)
 
     # Update history
@@ -119,19 +154,21 @@ def run_episode(env, model, in_size, out_size, max_steps, sim_time, eps=0, learn
     # Break if terminated or max_steps reached
     # (+1 because the first state is not counted as a step)
     if terminated or t >= max_steps:
+      model.plot()
+      plt.show()
       break
     else:
       next_state = torch.tensor(observation, dtype=torch.bool, device=device)
 
     # Perform one step of the optimization
     if learning:
-      model.STDP_RL(reward, state, out_spikes)
-
+      update_mod = model.update_table(coords, action, next_state_coords, reward)  # TODO: Change from coords to spikes
+      model.STDP_RL(update_mod, state, out_spikes)
 
     # Move to the next state
     state = next_state
+    coords = next_state_coords
     state = state[:, 0:in_size]
-
 
   return history
 
@@ -144,7 +181,7 @@ def record_episode(env, model, in_size, out_size, max_steps, sim_time, eps, lear
 
 def train_STDP_RL(env_width, env_height, max_total_steps, max_steps_per_ep, eps_start,
                   eps_end, decay_intensity, in_size, out_size, sim_time, hyper_params,
-                  env_trace_length, a_plus, a_minus, tc_e_trace, learning_rate, device='cpu',
+                  env_trace_length, a_plus, a_minus, tc_e_trace, learning_rate, gamma, device='cpu',
                   plot=False):
 
   ## Init model & maze ##
@@ -154,14 +191,14 @@ def train_STDP_RL(env_width, env_height, max_total_steps, max_steps_per_ep, eps_
   for i in range(4):
     w_out_out[i*20:(i+1)*20, i*20:(i+1)*20] = 0
   model = STDP_RL_Model(in_size, out_size, hyper_params, w_in_out, w_out_out,
-                        a_plus, a_minus, tc_e_trace, learning_rate, device)
+                        a_plus, a_minus, tc_e_trace, learning_rate, gamma, device)
   env = Grid_Cell_Maze_Environment(width=env_width, height=env_height, trace_length=env_trace_length,
                                    samples_file='Data/recalled_memories_sorted.pkl')
 
   ## Pre-training recording ##
-  if plot:
-    record_episode(env, model, in_size, out_size, 25, sim_time, eps=0, learning=False, device=device,
-                   filename="pre_training.gif")
+  # if plot:
+  #   record_episode(env, model, in_size, out_size, 25, sim_time, eps=0, learning=False, device=device,
+  #                  filename="pre_training.gif")
 
   ## Training loop ##
   episode_durations = []
