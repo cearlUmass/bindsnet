@@ -94,6 +94,7 @@ class Maze_Environment():
   # Returns next state, reward, done, info
   def step(self, action):
     # Transform action into Direction
+    action_num = action.cpu().item()
     if action == 0:
       action = Direction.N
     elif action == 1:
@@ -105,28 +106,28 @@ class Maze_Environment():
 
     # Check if action runs into wall
     if action not in self.agent_cell.open_walls:
-      self.path_history.append((self.agent_cell.coordinates, -1, False, {}))
-      return self.agent_cell, -1, False, {}
+      self.path_history.append((self.agent_cell.coordinates, -0.5, False, action_num))
+      return self.agent_cell, -0.5, False, {}
 
     # Move agent
     else:
       prev_cell = self.agent_cell
       self.agent_cell = self.maze.neighbor(self.agent_cell, action)
       if self.agent_cell == self.maze.end_cell:    # Check if agent has reached the end
-        self.path_history.append((self.agent_cell.coordinates, 1, True, {}))
+        self.path_history.append((self.agent_cell.coordinates, 1, True, action_num))
         return self.agent_cell, 1, True, {}
       else:
         prev_trace = self.reward_trace[*prev_cell.coordinates]
         new_trace = self.reward_trace[*self.agent_cell.coordinates]
-        reward = 1 if new_trace > prev_trace else 0
-        self.path_history.append((self.agent_cell.coordinates, 0, False, {}))
+        reward = 1 if new_trace > prev_trace else 0.1
+        self.path_history.append((self.agent_cell.coordinates, reward, False, action_num))
         return self.agent_cell, reward, False, {}
 
   def save(self, filename):
     with open(filename, 'wb') as f:
       pkl.dump(self, f)
 
-  def animate_history(self, run_history, file_name='maze.gif'):
+  def animate_history(self, run_history, file_name='maze.gif', motor_pop_size=50):
     fig = plt.figure()
     gs = fig.add_gridspec(1, 4)
     out_s_ax = fig.add_subplot(gs[0, 0])
@@ -138,13 +139,13 @@ class Maze_Environment():
       maze_ax.clear()
       self.plot(maze_ax)
       maze_ax.plot(self.path_history[i][0][1], self.path_history[i][0][0], 'yo')
-      maze_ax.set_title(f'Step {i}, Reward: {self.path_history[i][1]}')
+      maze_ax.set_title(f'Step {i}, Reward: {self.path_history[i][1]}, Action: {self.path_history[i][3]}')
       maze_ax.set_aspect('equal')
       # Out spikes axis
       out_shape = run_history[i][-1].T.shape
       out_s_ax.clear()
       out_s_ax.imshow(run_history[i][-1].T)
-      for y in range(0, out_shape[0], 20):    # MANUAL SET NUMBER
+      for y in range(0, out_shape[0], motor_pop_size):    # MANUAL SET NUMBER
         out_s_ax.plot([0, out_shape[1]-1], [y, y], color='red')
       out_s_ax.set_title('Output spikes')
       out_s_ax.set_ylabel('Output neurons')
@@ -161,8 +162,16 @@ class Maze_Environment():
     ani.save(file_name, writer='ffmpeg', fps=2)
 
 class Grid_Cell_Maze_Environment(Maze_Environment):
-  def __init__(self, width, height, trace_length=5, samples_file='Data/preprocessed_recalls_sorted.pkl'):
-    super().__init__(width, height, trace_length)
+  def __init__(self, width, height, trace_length=5, samples_file='Data/recalled_memories_sorted.pkl', load_from=None):
+    if load_from is not None:
+      with open(load_from, 'rb') as f:
+        super().__init__(width, height, trace_length)
+        obj_data = pkl.load(f)
+        self.__dict__.update(obj_data.__dict__)
+    else:
+      super().__init__(width, height, trace_length)
+
+    self.reward_trace = self.calculate_reward_trace(trace_length)
 
     # Load spike train samples
     # {position: [spike_trains]}
@@ -188,19 +197,8 @@ class Grid_Cell_Maze_Environment(Maze_Environment):
 
 
 if __name__ == '__main__':
-  from train_DQN import DQN, ReplayMemory
-  from scripts.Chris.DQN.train_DQN import run_episode
-
-  device = 'cpu'
-  n_actions = 4
-  input_size = 300
-  lr = 0.01
-  policy_net = DQN(input_size, n_actions).to(device)
-  target_net = DQN(input_size, n_actions).to(device)
-  target_net.load_state_dict(policy_net.state_dict())
-  optimizer = optim.AdamW(policy_net.parameters(), lr=lr, amsgrad=True)
-  memory = ReplayMemory(1000)
-  env = Grid_Cell_Maze_Environment(width=5, height=5)
-
-  run_episode(env, policy_net, 'cpu', 100, eps=0.9)
-  env.animate_history()
+  env = Grid_Cell_Maze_Environment(width=5, height=5, trace_length=5,
+                                   samples_file='Data/recalled_memories_sorted.pkl')
+  print(env.maze)
+  with open('Data/env.pkl', 'wb') as f:
+    pkl.dump(env, f)

@@ -19,7 +19,7 @@ def intensity_to_spike(intensity, time, max_freq, labels=None):
 
   return spike_train
 
-def spike_train_generator(intensities, labels, sim_time, gc_multiples, max_freq):
+def spike_train_generator(sim_time, gc_multiples, max_freq):
   print("Generating Spike Trains...")
 
   ## Transform intensities to spike trains ##

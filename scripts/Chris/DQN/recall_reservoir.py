@@ -3,8 +3,8 @@ import numpy as np
 import torch
 from matplotlib import pyplot as plt
 
-def recall_reservoir(exc_size, inh_size, sim_time, plot=False):
-  print("Recalling memories...")
+def forward_reservoir(exc_size, inh_size, sim_time, plot=False):
+  print("Forwarding memories...")
 
   ## Load memory module and memory keys ##
   with open('Data/reservoir_module.pkl', 'rb') as f:

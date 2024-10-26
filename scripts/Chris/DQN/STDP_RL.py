@@ -54,12 +54,12 @@ class STDP_RL_Model(Network):
     self.add_connection(in_out_conn, source='input', target='output')
     self.add_connection(out_out_conn, source='output', target='output')
     self.weights = in_out_wfeat
+    self.w_mask = in_out_wfeat.value != 0
 
     ## Migrate ##
     self.to(device)
 
     ## STDP-RL Parameters ##
-    self.eligibility_trace = torch.zeros(in_size, out_size, device=device)
     self.eligibility = torch.zeros(in_size, out_size, device=device)
     self.a_plus = a_plus
     self.a_minus = a_minus
@@ -73,15 +73,15 @@ class STDP_RL_Model(Network):
   def STDP_RL(self, update_mod, in_spikes, out_spikes):
     in_activity = in_spikes.squeeze().sum(dim=0)
     out_activity = out_spikes.squeeze().sum(dim=0)
-    self.eligibility = torch.outer(in_activity*self.a_plus, out_activity) + \
-                  torch.outer(in_activity, out_activity*self.a_minus)
+    self.eligibility = torch.outer(in_activity*self.a_plus, out_activity) # + \
+                  # torch.outer(in_activity, out_activity*self.a_minus)
 
     # Update eligibility trace
     # self.eligibility_trace *= np.exp(-1/self.tc_e_trace)
     # self.eligibility_trace += self.eligibility / self.tc_e_trace
 
     # Update weights
-    self.weights.value += self.eligibility * update_mod # * 0.1
+    self.weights.value[self.w_mask] += (self.eligibility * update_mod * 0.1)[self.w_mask]
 
   def update_table(self, state, action, next_state, reward):
     # Preprocess state for simpler indexing
@@ -97,7 +97,9 @@ class STDP_RL_Model(Network):
       self.q_table[state][action] *= (1 - self.lr)  # Decay
       self.q_table[state][action] += self.lr * (reward + self.gamma * next_state_val)  # Update
       delta = self.q_table[state][action] - old_val
-      opt_act = np.argmax(self.q_table[state])
+      # self.total_choices += 1
+      # self.correct_choices += 1 if opt_act == action else 0
+      # print(f"Accuracy: {self.correct_choices/self.total_choices}")
       return delta
 
   def plot(self):
@@ -109,6 +111,8 @@ class STDP_RL_Model(Network):
     fig.colorbar(im, ax=ax1)
     im = ax2.imshow(self.eligibility, cmap='hot', interpolation='nearest')
     fig.colorbar(im, ax=ax2)
+    ax1.set_title("Weights")
+    ax2.set_title("Eligibility")
     plt.show()
 
 
@@ -123,7 +127,7 @@ def select_action(assoc_spikes, sim_time, out_size, eps, model, env):
     out_spikes = model.output_monitor.get('s')
     action = torch.argmax(out_spikes.reshape(sim_time, env.num_actions, motor_pop_size).sum(0).sum(1))
     model.reset_state_variables()
-    return action, out_spikes.squeeze()
+    return action, out_spikes.squeeze(), True   # action, out spikes, chosen_by_policy
 
   # Select random action (exploration)
   else:
@@ -133,37 +137,33 @@ def select_action(assoc_spikes, sim_time, out_size, eps, model, env):
     motor_pop_range = (action*motor_pop_size, action*motor_pop_size+motor_pop_size)
     motor_pop_spikes = torch.rand(sim_time, motor_pop_size) < 0.1
     out_spikes[:, motor_pop_range[0]:motor_pop_range[1]] = motor_pop_spikes
-    return torch.tensor([action]), out_spikes
+    return torch.tensor([action]), out_spikes, False  # action, out spikes, chosen_by_policy
 
 
-def run_episode(env, model, in_size, out_size, max_steps, sim_time, eps=0, learning=False, device='cpu'):
+def run_episode(env, model, in_size, out_size, motor_pop_size, max_steps, sim_time, eps=0, learning=False, device='cpu'):
   # Initialize the environment and get its state
   state, coords, _ = env.reset()
   state = state[:, 0:in_size]
   history = []
-  model.plot()
-  plt.show()
   for t in count():
-    action, out_spikes = select_action(state, sim_time, out_size, eps, model, env)
+    action, out_spikes, chosen_by_policy = select_action(state, sim_time, out_size, eps, model, env)
     observation, reward, terminated, next_state_coords, _ = env.step(action)
-    # reward = torch.tensor([reward], device=device)
+    next_state = torch.tensor(observation, dtype=torch.bool, device=device)
 
     # Update history
     history.append((state.numpy(), coords, action, reward, out_spikes.numpy()))
-
-    # Break if terminated or max_steps reached
-    # (+1 because the first state is not counted as a step)
-    if terminated or t >= max_steps:
-      model.plot()
-      plt.show()
-      break
-    else:
-      next_state = torch.tensor(observation, dtype=torch.bool, device=device)
 
     # Perform one step of the optimization
     if learning:
       update_mod = model.update_table(coords, action, next_state_coords, reward)  # TODO: Change from coords to spikes
       model.STDP_RL(update_mod, state, out_spikes)
+
+    # Break if terminated or max_steps reached
+    if terminated or t >= max_steps:
+      # env.animate_history(history, motor_pop_size=motor_pop_size)
+      model.plot()
+      plt.show()
+      break
 
     # Move to the next state
     state = next_state
@@ -180,20 +180,22 @@ def record_episode(env, model, in_size, out_size, max_steps, sim_time, eps, lear
 
 
 def train_STDP_RL(env_width, env_height, max_total_steps, max_steps_per_ep, eps_start,
-                  eps_end, decay_intensity, in_size, out_size, sim_time, hyper_params,
+                  eps_end, decay_intensity, in_size, out_size, motor_pop_size, sim_time, hyper_params,
                   env_trace_length, a_plus, a_minus, tc_e_trace, learning_rate, gamma, device='cpu',
                   plot=False):
 
   ## Init model & maze ##
-  w_in_out = torch.rand((in_size, out_size))
-  w_in_out = sparsify(w_in_out, 0.5)
-  w_out_out = -torch.ones((out_size, out_size))*0.1
+  w_in_out = torch.rand((in_size, out_size))*2
+  w_in_out = sparsify(w_in_out, 0.7)
+  w_out_out = -torch.ones((out_size, out_size))
+  # Inhibit other motor pop, excite own motor pop
   for i in range(4):
-    w_out_out[i*20:(i+1)*20, i*20:(i+1)*20] = 0
+    w_out_out[i*motor_pop_size:(i+1)*motor_pop_size, i*motor_pop_size:(i+1)*motor_pop_size] = 1
   model = STDP_RL_Model(in_size, out_size, hyper_params, w_in_out, w_out_out,
                         a_plus, a_minus, tc_e_trace, learning_rate, gamma, device)
   env = Grid_Cell_Maze_Environment(width=env_width, height=env_height, trace_length=env_trace_length,
-                                   samples_file='Data/recalled_memories_sorted.pkl')
+                                   samples_file='Data/recalled_memories_sorted.pkl',
+                                   load_from='Data/env.pkl')
 
   ## Pre-training recording ##
   # if plot:
@@ -207,21 +209,23 @@ def train_STDP_RL(env_width, env_height, max_total_steps, max_steps_per_ep, eps_
   print(env.maze)
   while total_steps < max_total_steps:
     eps = eps_end + (eps_start - eps_end) * math.exp(-decay_intensity * total_steps / (max_total_steps))
-    history = run_episode(env, model, in_size, out_size, max_steps_per_ep, sim_time, eps=eps, learning=True, device=device)
+    history = run_episode(env, model, in_size, out_size, motor_pop_size, max_steps_per_ep, sim_time, eps=eps, learning=True, device=device)
     total_steps += len(history)
     episode_durations.append(len(history))
-    print(f"Episode {episodes} lasted {len(history)} steps, eps = {round(eps, 2)} total steps = {total_steps}")
+    print(f"Episode {episodes} lasted {len(history)} steps, eps = {round(eps, 2)} total steps = {total_steps}, "
+          f"avg reward = {round(sum([h[3] for h in history])/len(history), 2)}")
     episodes += 1
 
   ## Post-training recording ##
   if plot:
-    record_episode(env, model, in_size, out_size, 25, sim_time, eps=0, learning=False, device=device,
-                   filename="post_training.gif")
+    env.animate_history(history, motor_pop_size=motor_pop_size)
+    # record_episode(env, model, in_size, out_size, 25, sim_time, eps=0, learning=False, device=device,
+    #                filename="post_training.gif")
 
   ## Plot Episodes##
-  if plot:
-    plt.plot(episode_durations)
-    plt.title("Episode durations")
-    plt.ylabel("Duration")
-    plt.xlabel("Episode")
-    plt.show()
+  # if plot:
+  #   plt.plot(episode_durations)
+  #   plt.title("Episode durations")
+  #   plt.ylabel("Duration")
+  #   plt.xlabel("Episode")
+  #   plt.show()

@@ -5,9 +5,9 @@ import pickle as pkl
 import numpy as np
 from matplotlib import pyplot as plt
 
-def store_reservoir(exc_size, inh_size, num_samples, num_grid_cells, gc_multiples, sim_time,
-                    hyper_params, plot=False):
-  print("Storing memories...")
+def create_reservoir(exc_size, inh_size, num_samples, num_grid_cells, gc_multiples, sim_time,
+                     hyper_params, plot=False):
+  print("Creating Reservoir...")
 
   ## Create synaptic weights ##
   in_size = num_grid_cells * gc_multiples
@@ -27,8 +27,8 @@ def store_reservoir(exc_size, inh_size, num_samples, num_grid_cells, gc_multiple
                   w_in_exc, w_in_inh, w_exc_exc, w_exc_inh, w_inh_exc, w_inh_inh)
 
   ## Load grid cell spike-train samples ##
-  with open('Data/grid_cell_spk_trains.pkl', 'rb') as f:
-    grid_cell_data, labels = pkl.load(f)  # (samples, time, num_cells)
+  # with open('Data/grid_cell_spk_trains.pkl', 'rb') as f:
+  #   grid_cell_data, labels = pkl.load(f)  # (samples, time, num_cells)
 
   ## Store memories ##
   # -> STDP active
@@ -46,13 +46,13 @@ def store_reservoir(exc_size, inh_size, num_samples, num_grid_cells, gc_multiple
   #   ax[0, 1].set_ylabel("Res Neuron")
 
   # Store samples
-  sample_inds = np.random.choice(len(grid_cell_data), num_samples, replace=False)
-  samples = grid_cell_data[sample_inds]  # (#-samples, time, num-cells)
-  labels = labels[sample_inds]
-  np.random.shuffle(samples)
-  for i, s in enumerate(samples):
-    res.store(torch.tensor(s.reshape(sim_time, -1)), sim_time=sim_time)
-    res.reset_state_variables()
+  # sample_inds = np.random.choice(len(grid_cell_data), num_samples, replace=False)
+  # samples = grid_cell_data[sample_inds]  # (#-samples, time, num-cells)
+  # labels = labels[sample_inds]
+  # np.random.shuffle(samples)
+  # for i, s in enumerate(samples):
+  #   res.store(torch.tensor(s.reshape(sim_time, -1)), sim_time=sim_time)
+  #   res.reset_state_variables()
 
   # if plot:
   #   im = ax[1, 0].imshow(w_in_res)
