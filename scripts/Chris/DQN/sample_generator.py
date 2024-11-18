@@ -56,10 +56,13 @@ def sample_generator(scales, offsets, vars, x_range, y_range,
 
   if plot:
     module.plot_centers()
-    plt.title('Grid Cell Centers')
+    plt.title('Grid Cell Firing Centers')
     for i in range(x_range[1]):
       for j in range(y_range[1]):
         plt.plot(i, j, 'r+', markersize=10)
+    ax = plt.gca()
+    ax.set_xlim([x_range[0], x_range[1]])
+    ax.set_ylim([y_range[0], y_range[1]])
     plt.show()
 
   return samples, labels, sorted_samples

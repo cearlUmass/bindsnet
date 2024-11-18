@@ -17,7 +17,7 @@ if __name__ == '__main__':
   ## Constants ##
   WIDTH = 5
   HEIGHT = 5
-  SAMPLES_PER_POS = 1
+  SAMPLES_PER_POS = 10
   NOISE = 0.1   # Noise in sampling
   NUM_CELLS = 25
   X_RANGE = (0, WIDTH)
@@ -46,7 +46,7 @@ if __name__ == '__main__':
   }
   PLOT = True
 
-  ## Sample Generation ##
+  # Sample Generation ##
   # x_offsets = np.random.uniform(-1, 1, NUM_CELLS)
   # y_offsets = np.random.uniform(-1, 1, NUM_CELLS)
   # offsets = list(zip(x_offsets, y_offsets))           # Grid Cell x & y offsets
@@ -57,24 +57,25 @@ if __name__ == '__main__':
   #
   # ## Spike Train Generation ##
   # spike_trains, labels, sorted_spike_trains = spike_train_generator(SIM_TIME, GC_MULTIPLES, MAX_SPIKE_FREQ)
-
-  # Create Reservoir ##
+  #
+  # ## Create Reservoir ##
   # hyper_params = exc_hyper_params | inh_hyper_params
   # create_reservoir(EXC_SIZE, INH_SIZE, STORE_SAMPLES, NUM_CELLS, GC_MULTIPLES, SIM_TIME, hyper_params, PLOT)
   #
-  # # ## Association (Recall) ##
+  # ## Association (Recall) ##
   # forward_reservoir(EXC_SIZE, INH_SIZE, SIM_TIME, PLOT)
-
-  ## Preprocess Recalls ##
+  #
+  # ## Preprocess Recalls ##
   # recalled_mem_preprocessing(WIDTH, HEIGHT, PLOT)
 
   ## Train STDP-RL ##
-  EPS_START = 0.75
-  EPS_END = 0.05
+  EPS_START = 0.95
+  EPS_END = 0
   DECAY_INTENSITY = 3  # higher
   # GAMMA = 0.99
-  MAX_STEPS_PER_EP = 50
-  MAX_TOTAL_STEPS = 5000
+  MAX_STEPS_PER_EP = 100
+  MAX_TOTAL_STEPS = 3000
+  INITIALIZATION_STEPS = 0 #1000
   INPUT_SIZE = EXC_SIZE # + INH_SIZE
   MOTOR_POP_SIZE = 50
   OUT_SIZE = 4 * MOTOR_POP_SIZE
@@ -83,7 +84,7 @@ if __name__ == '__main__':
   TC_E_TRACE = 10
   SIM_TIME = 50
   ENV_TRACE_LENGTH = 10
-  LR = 0.01
+  LR = 0.001
   GAMMA = 0.7
   out_hyperparams = {
     'thresh_out': -60,
@@ -93,6 +94,6 @@ if __name__ == '__main__':
     'tc_theta_decay_out': 1000,
     'tc_decay_out': 30,
   }
-  train_STDP_RL(HEIGHT, WIDTH, MAX_TOTAL_STEPS, MAX_STEPS_PER_EP, EPS_START, EPS_END, DECAY_INTENSITY,
+  train_STDP_RL(HEIGHT, WIDTH, MAX_TOTAL_STEPS, MAX_STEPS_PER_EP, INITIALIZATION_STEPS, EPS_START, EPS_END, DECAY_INTENSITY,
                 INPUT_SIZE, OUT_SIZE, MOTOR_POP_SIZE, SIM_TIME, out_hyperparams, ENV_TRACE_LENGTH,
                 A_PLUS, A_MINUS, TC_E_TRACE, LR, GAMMA, device='cpu', plot=PLOT)

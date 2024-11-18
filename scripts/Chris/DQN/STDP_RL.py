@@ -6,6 +6,7 @@ import torch
 from itertools import count
 
 from matplotlib import pyplot as plt
+from triton.language import dtype
 
 from bindsnet.network import Network
 from bindsnet.network.monitors import Monitor
@@ -70,18 +71,26 @@ class STDP_RL_Model(Network):
     self.gamma = gamma
     self.q_table = {}
 
-  def STDP_RL(self, update_mod, in_spikes, out_spikes):
+  def STDP_RL(self, in_spikes, out_spikes, next_state, delta_Q):
     in_activity = in_spikes.squeeze().sum(dim=0)
     out_activity = out_spikes.squeeze().sum(dim=0)
-    self.eligibility = torch.outer(in_activity*self.a_plus, out_activity) # + \
-                  # torch.outer(in_activity, out_activity*self.a_minus)
-
-    # Update eligibility trace
-    # self.eligibility_trace *= np.exp(-1/self.tc_e_trace)
-    # self.eligibility_trace += self.eligibility / self.tc_e_trace
+    self.eligibility = torch.outer(in_activity*self.a_plus, out_activity)
 
     # Update weights
-    self.weights.value[self.w_mask] += (self.eligibility * update_mod * 0.1)[self.w_mask]
+    alpha = 0.001
+    if np.abs(delta_Q) < 0.01:
+      r = 0
+    else:
+      r = np.sign(delta_Q)
+    # next_state_val = 0 if next_state not in self.q_table else max(self.q_table[next_state])
+    # self.weights.value *= (1 - alpha)
+    # self.weights.value += (self.gamma * next_state_val + reward) * self.eligibility * alpha    # When next_state_val = self.lr * reward it stalls; how to fix?
+    self.weights.value[self.eligibility > 0] *= 0.99
+    self.weights.value[self.eligibility != 0] += torch.normal(mean=0, std=0.01, size=self.weights.value.shape)[self.eligibility != 0]
+    self.weights.value += alpha * r * self.eligibility
+    self.weights.value[self.w_mask == 0] = 0
+    self.weights.value[self.weights.value < 0] = 0
+    self.weights.value[self.weights.value > 3] = 3
 
   def update_table(self, state, action, next_state, reward):
     # Preprocess state for simpler indexing
@@ -90,17 +99,14 @@ class STDP_RL_Model(Network):
     if state not in self.q_table:
       self.q_table[state] = np.zeros(4)    # 4 moves
       self.q_table[state][action] = self.lr * reward
-      return self.lr * reward
+      delta_Q = self.q_table[state][action]
     else:
+      org_val = self.q_table[state][action]
       next_state_val = 0 if next_state not in self.q_table else max(self.q_table[next_state])
-      old_val = self.q_table[state][action]
       self.q_table[state][action] *= (1 - self.lr)  # Decay
       self.q_table[state][action] += self.lr * (reward + self.gamma * next_state_val)  # Update
-      delta = self.q_table[state][action] - old_val
-      # self.total_choices += 1
-      # self.correct_choices += 1 if opt_act == action else 0
-      # print(f"Accuracy: {self.correct_choices/self.total_choices}")
-      return delta
+      delta_Q = self.q_table[state][action] - org_val
+    return delta_Q
 
   def plot(self):
     fig = plt.figure(figsize=(12, 6))
@@ -115,6 +121,51 @@ class STDP_RL_Model(Network):
     ax2.set_title("Eligibility")
     plt.show()
 
+  def plot_q_table(self, env):
+    # Get max action for each position
+    env_shape = (env.maze.width, env.maze.height)
+    max_actions = np.zeros(env_shape)
+    for state, actions in self.q_table.items():
+      coords = state
+      max_actions[coords[0], coords[1]] = np.argmax(actions)
+    # Plot max actions with arrows
+    fig, ax = plt.subplots()
+    # ax.imshow(max_actions, cmap='hot', interpolation='nearest')
+    for i in range(env_shape[0]):
+      for j in range(env_shape[1]):
+        if max_actions[i, j] == 0:
+          ax.arrow(j, i, 0, -0.3, head_width=0.1, head_length=0.1, fc='k', ec='k')
+        elif max_actions[i, j] == 1:
+          ax.arrow(j, i, 0.3, 0, head_width=0.1, head_length=0.1, fc='k', ec='k')
+        elif max_actions[i, j] == 2:
+          ax.arrow(j, i, 0, 0.3, head_width=0.1, head_length=0.1, fc='k', ec='k')
+        elif max_actions[i, j] == 3:
+          ax.arrow(j, i, -0.3, 0, head_width=0.1, head_length=0.1, fc='k', ec='k')
+    # Plot maze
+    env.plot(ax)
+    plt.show()
+
+  # Plot move count for each tile in the maze
+  def plot_move_count(self, history, env):
+    fig, ax = plt.subplots()
+    move_count = np.zeros((env.maze.width, env.maze.height, 4))
+    for _, coords, action, _, _ in history:
+      move_count[coords[0], coords[1], action] += 1
+    # ax.imshow(max_actions, cmap='hot', interpolation='nearest')
+    for i in range(env.maze.width):
+      for j in range(env.maze.height):
+        if move_count[i, j, 0] > 0:
+          ax.text(j, i - 0.3, int(move_count[i, j, 0]), ha='center', va='center', color='blue')
+        if move_count[i, j, 1] > 0:
+          ax.text(j + 0.3, i, int(move_count[i, j, 1]), ha='center', va='center', color='blue')
+        if move_count[i, j, 2] > 0:
+          ax.text(j, i + 0.3, int(move_count[i, j, 2]), ha='center', va='center', color='blue')
+        if move_count[i, j, 3] > 0:
+          ax.text(j - 0.3, i, int(move_count[i, j, 3]), ha='center', va='center', color='blue')
+
+    # Plot maze
+    env.plot(ax)
+    plt.show()
 
 # Select action using epsilon-greedy policy
 def select_action(assoc_spikes, sim_time, out_size, eps, model, env):
@@ -140,6 +191,38 @@ def select_action(assoc_spikes, sim_time, out_size, eps, model, env):
     return torch.tensor([action]), out_spikes, False  # action, out spikes, chosen_by_policy
 
 
+# def run_episode(env, model, in_size, out_size, motor_pop_size, max_steps, sim_time, eps=0, learning=False, device='cpu'):
+#   # Initialize the environment and get its state
+#   state, coords, _ = env.reset()
+#   state = state[:, 0:in_size]
+#   history = []
+#   for t in count():
+#     action, out_spikes, chosen_by_policy = select_action(state, sim_time, out_size, eps, model, env)
+#     observation, reward, terminated, next_state_coords, _ = env.step(action)
+#     next_state = torch.tensor(observation, dtype=torch.bool, device=device)
+#
+#     # Update history
+#     history.append((state.numpy(), coords, action, reward, out_spikes.numpy()))
+#
+#     # Perform one step of the optimization
+#     model.update_table(coords, action, next_state_coords, reward)
+#     if learning:
+#       model.STDP_RL(state, out_spikes, next_state_coords, reward)
+#
+#     # Break if terminated or max_steps reached
+#     if terminated or t >= max_steps:
+#       # env.animate_history(history, motor_pop_size=motor_pop_size)
+#       model.plot()
+#       plt.show()
+#       break
+#
+#     # Move to the next state
+#     state = next_state
+#     coords = next_state_coords
+#     state = state[:, 0:in_size]
+#
+#   return history
+
 def run_episode(env, model, in_size, out_size, motor_pop_size, max_steps, sim_time, eps=0, learning=False, device='cpu'):
   # Initialize the environment and get its state
   state, coords, _ = env.reset()
@@ -154,15 +237,15 @@ def run_episode(env, model, in_size, out_size, motor_pop_size, max_steps, sim_ti
     history.append((state.numpy(), coords, action, reward, out_spikes.numpy()))
 
     # Perform one step of the optimization
+    delta_Q = model.update_table(coords, action, next_state_coords, reward)
     if learning:
-      update_mod = model.update_table(coords, action, next_state_coords, reward)  # TODO: Change from coords to spikes
-      model.STDP_RL(update_mod, state, out_spikes)
+      model.STDP_RL(state, out_spikes, next_state_coords, reward)
 
     # Break if terminated or max_steps reached
     if terminated or t >= max_steps:
       # env.animate_history(history, motor_pop_size=motor_pop_size)
-      model.plot()
-      plt.show()
+      # model.plot()
+      # plt.show()
       break
 
     # Move to the next state
@@ -179,7 +262,7 @@ def record_episode(env, model, in_size, out_size, max_steps, sim_time, eps, lear
   plt.clf()
 
 
-def train_STDP_RL(env_width, env_height, max_total_steps, max_steps_per_ep, eps_start,
+def train_STDP_RL(env_width, env_height, max_total_steps, max_steps_per_ep, initialization_steps, eps_start,
                   eps_end, decay_intensity, in_size, out_size, motor_pop_size, sim_time, hyper_params,
                   env_trace_length, a_plus, a_minus, tc_e_trace, learning_rate, gamma, device='cpu',
                   plot=False):
@@ -190,7 +273,7 @@ def train_STDP_RL(env_width, env_height, max_total_steps, max_steps_per_ep, eps_
   w_out_out = -torch.ones((out_size, out_size))
   # Inhibit other motor pop, excite own motor pop
   for i in range(4):
-    w_out_out[i*motor_pop_size:(i+1)*motor_pop_size, i*motor_pop_size:(i+1)*motor_pop_size] = 1
+    w_out_out[i*motor_pop_size:(i+1)*motor_pop_size, i*motor_pop_size:(i+1)*motor_pop_size] = 0.1
   model = STDP_RL_Model(in_size, out_size, hyper_params, w_in_out, w_out_out,
                         a_plus, a_minus, tc_e_trace, learning_rate, gamma, device)
   env = Grid_Cell_Maze_Environment(width=env_width, height=env_height, trace_length=env_trace_length,
@@ -202,30 +285,43 @@ def train_STDP_RL(env_width, env_height, max_total_steps, max_steps_per_ep, eps_
   #   record_episode(env, model, in_size, out_size, 25, sim_time, eps=0, learning=False, device=device,
   #                  filename="pre_training.gif")
 
+  ## Exploration Phase ##
+  t = 0
+  while t < initialization_steps:
+    history = run_episode(env, model, in_size, out_size, motor_pop_size, max_steps_per_ep, sim_time, eps=1, learning=False, device=device)
+    t += len(history)
+
+  # model.plot_q_table(env)
   ## Training loop ##
   episode_durations = []
+  universal_history = []
   episodes = 0
   total_steps = 0
   print(env.maze)
   while total_steps < max_total_steps:
     eps = eps_end + (eps_start - eps_end) * math.exp(-decay_intensity * total_steps / (max_total_steps))
     history = run_episode(env, model, in_size, out_size, motor_pop_size, max_steps_per_ep, sim_time, eps=eps, learning=True, device=device)
+    universal_history.extend(history)
     total_steps += len(history)
     episode_durations.append(len(history))
     print(f"Episode {episodes} lasted {len(history)} steps, eps = {round(eps, 2)} total steps = {total_steps}, "
           f"avg reward = {round(sum([h[3] for h in history])/len(history), 2)}")
     episodes += 1
 
-  ## Post-training recording ##
+  # Post-training recording ##
   if plot:
     env.animate_history(history, motor_pop_size=motor_pop_size)
-    # record_episode(env, model, in_size, out_size, 25, sim_time, eps=0, learning=False, device=device,
-    #                filename="post_training.gif")
+    model.plot()
+    plt.show()
+    model.plot_q_table(env)
+    # Plot confusion
+    model.plot_move_count(universal_history, env)
 
   ## Plot Episodes##
-  # if plot:
-  #   plt.plot(episode_durations)
-  #   plt.title("Episode durations")
-  #   plt.ylabel("Duration")
-  #   plt.xlabel("Episode")
-  #   plt.show()
+  if plot:
+    plt.plot(episode_durations)
+    plt.title("Episode durations")
+    plt.ylabel("Duration")
+    plt.xlabel("Episode")
+    plt.show()
+    model.plot()
