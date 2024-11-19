@@ -77,8 +77,8 @@ class STDP_RL_Model(Network):
     self.eligibility = torch.outer(in_activity*self.a_plus, out_activity)
 
     # Update weights
-    alpha = 0.001
-    if np.abs(delta_Q) < 0.01:
+    alpha = 0.002
+    if np.abs(delta_Q) < 1e-4:
       r = 0
     else:
       r = np.sign(delta_Q)
@@ -176,7 +176,14 @@ def select_action(assoc_spikes, sim_time, out_size, eps, model, env):
     ## Pass association spikes through model ##
     model.run(inputs={'input': assoc_spikes}, time=sim_time)
     out_spikes = model.output_monitor.get('s')
-    action = torch.argmax(out_spikes.reshape(sim_time, env.num_actions, motor_pop_size).sum(0).sum(1))
+    if torch.max(out_spikes) == 0:
+      action = torch.tensor([np.random.choice(env.num_actions)])    # Random action if no spikes
+      out_spikes = torch.zeros(sim_time, out_size)
+      motor_pop_range = (action * motor_pop_size, action * motor_pop_size + motor_pop_size)
+      motor_pop_spikes = torch.rand(sim_time, motor_pop_size) < 0.1
+      out_spikes[:, motor_pop_range[0]:motor_pop_range[1]] = motor_pop_spikes
+    else:
+      action = torch.argmax(out_spikes.reshape(sim_time, env.num_actions, motor_pop_size).sum(0).sum(1))
     model.reset_state_variables()
     return action, out_spikes.squeeze(), True   # action, out spikes, chosen_by_policy
 
@@ -239,7 +246,7 @@ def run_episode(env, model, in_size, out_size, motor_pop_size, max_steps, sim_ti
     # Perform one step of the optimization
     delta_Q = model.update_table(coords, action, next_state_coords, reward)
     if learning:
-      model.STDP_RL(state, out_spikes, next_state_coords, reward)
+      model.STDP_RL(state, out_spikes, next_state_coords, delta_Q)
 
     # Break if terminated or max_steps reached
     if terminated or t >= max_steps:

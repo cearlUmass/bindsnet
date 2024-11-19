@@ -60,7 +60,10 @@ class GC_Module:
     self.offsets = offsets
     self.colors = ['b', 'g', 'r', 'c', 'm', 'y', 'k', 'w', 'orange', 'purple', 'brown',
                    'pink', 'gray', 'olive', 'cyan', 'lime', 'teal', 'lavender', 'tan', 'salmon',
-                   'gold', 'indigo', 'maroon', 'navy', 'peru', 'sienna', 'tomato', 'violet', 'wheat',]
+                   'gold', 'indigo', 'maroon', 'navy', 'peru', 'sienna', 'tomato', 'violet', 'wheat',
+                   'yellow', 'aquamarine', 'azure', 'beige', 'blueviolet', 'burlywood', 'cadetblue',
+                   'chartreuse', 'coral', 'cornflowerblue', 'crimson', 'darkblue', 'darkcyan',
+                   'darkgoldenrod', 'darkgray', 'darkgreen', 'darkkhaki', 'darkmagenta', 'darkolivegreen',]
 
   # Generate Grid Cell activity
   def generate(self, pos):
