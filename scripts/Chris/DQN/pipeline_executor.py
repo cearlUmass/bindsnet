@@ -28,6 +28,8 @@ def run(parameters: dict):
   GC_MULTIPLES = parameters['GC_MULTIPLES']
   EXC_SIZE = parameters['EXC_SIZE']
   INH_SIZE = parameters['INH_SIZE']
+  GRID_CELL_RADIUS = parameters['GRID_CELL_RADIUS']
+  GRID_CELL_SCALE = parameters['GRID_CELL_SCALE']
   exc_hyper_params = {
     'thresh_exc': parameters['exc_thresh'],
     'theta_plus_exc': parameters['exc_theta_plus'],
@@ -69,8 +71,8 @@ def run(parameters: dict):
   x_offsets = np.random.uniform(-1, 1, NUM_CELLS)
   y_offsets = np.random.uniform(-1, 1, NUM_CELLS)
   offsets = list(zip(x_offsets, y_offsets))  # Grid Cell x & y offsets
-  scales = [np.random.uniform(0.5, 3) for i in range(NUM_CELLS)]  # Dist. between Grid Cell peaks
-  vars = [.25] * NUM_CELLS  # Width of grid cell activity
+  scales = [np.random.uniform(0.1, GRID_CELL_SCALE) for i in range(NUM_CELLS)]  # Dist. between Grid Cell peaks
+  vars = [GRID_CELL_RADIUS] * NUM_CELLS  # Width of grid cell activity
   sample_generator(scales, offsets, vars, (0, WIDTH), (0, HEIGHT), SAMPLES_PER_POS,
                                                      noise=NOISE, padding=1, plot=PLOT)
 
@@ -93,17 +95,15 @@ def run(parameters: dict):
 
 if __name__ == '__main__':
   p = {
-    # Model Constants
-    'WIDTH': 5,                 # Width of the grid
-    'HEIGHT': 5,                # Height of the grid
-    'SAMPLES_PER_POS': 1,       # Number of samples per position
+    # Model Parameters
     'NOISE': 0.1,               # Noise in sampling
     'NUM_CELLS': 35,            # Number of grid cells
     'SIM_TIME': 50,             # How long (ms) to run model per step
     'MAX_SPIKE_FREQ': 0.8,      # Maximum spike frequency for Grid Cells
-    'GC_MULTIPLES': 1,          # How many repeats of Grid Cells
     'EXC_SIZE': 1000,           # Number of excitatory neurons
     'INH_SIZE': 250,            # Number of inhibitory neurons
+    'GRID_CELL_RADIUS': .25,    # Width of grid cell activity
+    'GRID_CELL_SCALE': 3,       # Dist. between Grid Cell peaks
 
     # Excitatory neuron hyperparameters
     'exc_thresh': -55,          # Firing threshold
@@ -129,15 +129,10 @@ if __name__ == '__main__':
     'tc_theta_decay_out': 1000, # Refractory rate of decay (bigger = slower decay)
     'tc_decay_out': 30,         # Membrane potential rate of decay (bigger = slower decay
 
-    # Training Constants
-    'EPS_START': 0.95,          # Epsilon starting val
-    'EPS_END': 0,               # Epsilon final val
+    # Training Parameters
     'DECAY_INTENSITY': 3,       # Rate of exponential decay for epsilon
-    'MAX_STEPS_PER_EP': 100,    # Max steps per episode
-    'MAX_TOTAL_STEPS': 2000,    # Max total steps
+    'MAX_TOTAL_STEPS': 2000,    # Max total steps during training
     'MOTOR_POP_SIZE': 50,       # Number of motor neurons per action
-    'OUT_SIZE': 4 * 50,         # Motor-Output size (Should be multiple of MOTOR_POP_SIZE)
-    'ENV_TRACE_LENGTH': 8,      # Length of the environment trace
     'LR': 0.001,                # Weight Learning rate
     'GAMMA': 0.7,               # Q-Learning Discount factor
   }
@@ -145,6 +140,8 @@ if __name__ == '__main__':
     'NUM_CELLS': [35, 50],            # Integer
     'EXC_SIZE': [1000, 2000],         # Integer
     'INH_SIZE': [250, 500],           # Integer
+    'GRID_CELL_RADIUS': [0.1, 0.75],  # Float
+    'GRID_CELL_SCALE': [1, 5],        # Float
     'exc_thresh': [-55, -50],         # Float/Integer
     'exc_theta_plus': [0, 5],         # Float/Integer
     'exc_refrac': [1, 5],             # Float/Integer
@@ -170,4 +167,19 @@ if __name__ == '__main__':
     'LR': [0.001, 0.01],              # Float
     'GAMMA': [0.7, 0.9],              # Float
   }
-  run(p)
+  c = {
+    # Model Constants
+    'WIDTH': 5,                 # Width of the grid
+    'HEIGHT': 5,                # Height of the grid
+    'SAMPLES_PER_POS': 1,       # Number of samples per position
+    'NOISE': 0.1,               # Noise in sampling
+    'GC_MULTIPLES': 1,          # How many repeats of Grid Cells
+
+    # Training Constants
+    'EPS_START': 0.95,          # Epsilon starting val
+    'EPS_END': 0,               # Epsilon final val
+    'MAX_STEPS_PER_EP': 100,    # Max steps per episode
+    'OUT_SIZE': 4 * p['MOTOR_POP_SIZE'], # Motor-Output population size
+    'ENV_TRACE_LENGTH': 8,      # Length of the environment trace
+  }
+  run(p | c)
