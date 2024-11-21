@@ -19,8 +19,7 @@ from scripts.Chris.DQN.Memory import sparsify
 
 
 class STDP_RL_Model(Network):
-  def __init__(self, in_size, out_size, hyper_params, w_in_out, w_out_out, a_plus, a_minus, tc_e_trace,
-               learning_rate, gamma, device='cpu'):
+  def __init__(self, in_size, out_size, hyper_params, w_in_out, w_out_out, learning_rate, gamma, device='cpu'):
     super().__init__()
 
     ## Layers ##
@@ -62,9 +61,6 @@ class STDP_RL_Model(Network):
 
     ## STDP-RL Parameters ##
     self.eligibility = torch.zeros(in_size, out_size, device=device)
-    self.a_plus = a_plus
-    self.a_minus = a_minus
-    self.tc_e_trace = tc_e_trace
     self.lr = learning_rate
 
     ## Q-Learning parameters ##
@@ -74,7 +70,7 @@ class STDP_RL_Model(Network):
   def STDP_RL(self, in_spikes, out_spikes, next_state, delta_Q):
     in_activity = in_spikes.squeeze().sum(dim=0)
     out_activity = out_spikes.squeeze().sum(dim=0)
-    self.eligibility = torch.outer(in_activity*self.a_plus, out_activity)
+    self.eligibility = torch.outer(in_activity, out_activity)
 
     # Update weights
     alpha = 0.002
@@ -86,7 +82,8 @@ class STDP_RL_Model(Network):
     # self.weights.value *= (1 - alpha)
     # self.weights.value += (self.gamma * next_state_val + reward) * self.eligibility * alpha    # When next_state_val = self.lr * reward it stalls; how to fix?
     self.weights.value[self.eligibility > 0] *= 0.99
-    self.weights.value[self.eligibility != 0] += torch.normal(mean=0, std=0.01, size=self.weights.value.shape)[self.eligibility != 0]
+    # self.weights.value[self.eligibility != 0] += (
+    #   torch.normal(mean=0, std=0.01, size=self.weights.value.shape))[self.eligibility != 0]
     self.weights.value += alpha * r * self.eligibility
     self.weights.value[self.w_mask == 0] = 0
     self.weights.value[self.weights.value < 0] = 0
@@ -177,15 +174,15 @@ def select_action(assoc_spikes, sim_time, out_size, eps, model, env):
     model.run(inputs={'input': assoc_spikes}, time=sim_time)
     out_spikes = model.output_monitor.get('s')
     if torch.max(out_spikes) == 0:
-      action = torch.tensor([np.random.choice(env.num_actions)])    # Random action if no spikes
+      action = np.random.choice(env.num_actions)    # Random action if no spikes
       out_spikes = torch.zeros(sim_time, out_size)
       motor_pop_range = (action * motor_pop_size, action * motor_pop_size + motor_pop_size)
-      motor_pop_spikes = torch.rand(sim_time, motor_pop_size) < 0.1
+      motor_pop_spikes = torch.rand(sim_time, motor_pop_size) < 0.05
       out_spikes[:, motor_pop_range[0]:motor_pop_range[1]] = motor_pop_spikes
     else:
       action = torch.argmax(out_spikes.reshape(sim_time, env.num_actions, motor_pop_size).sum(0).sum(1))
     model.reset_state_variables()
-    return action, out_spikes.squeeze(), True   # action, out spikes, chosen_by_policy
+    return torch.tensor([action]), out_spikes.squeeze(), True   # action, out spikes, chosen_by_policy
 
   # Select random action (exploration)
   else:
@@ -198,38 +195,6 @@ def select_action(assoc_spikes, sim_time, out_size, eps, model, env):
     return torch.tensor([action]), out_spikes, False  # action, out spikes, chosen_by_policy
 
 
-# def run_episode(env, model, in_size, out_size, motor_pop_size, max_steps, sim_time, eps=0, learning=False, device='cpu'):
-#   # Initialize the environment and get its state
-#   state, coords, _ = env.reset()
-#   state = state[:, 0:in_size]
-#   history = []
-#   for t in count():
-#     action, out_spikes, chosen_by_policy = select_action(state, sim_time, out_size, eps, model, env)
-#     observation, reward, terminated, next_state_coords, _ = env.step(action)
-#     next_state = torch.tensor(observation, dtype=torch.bool, device=device)
-#
-#     # Update history
-#     history.append((state.numpy(), coords, action, reward, out_spikes.numpy()))
-#
-#     # Perform one step of the optimization
-#     model.update_table(coords, action, next_state_coords, reward)
-#     if learning:
-#       model.STDP_RL(state, out_spikes, next_state_coords, reward)
-#
-#     # Break if terminated or max_steps reached
-#     if terminated or t >= max_steps:
-#       # env.animate_history(history, motor_pop_size=motor_pop_size)
-#       model.plot()
-#       plt.show()
-#       break
-#
-#     # Move to the next state
-#     state = next_state
-#     coords = next_state_coords
-#     state = state[:, 0:in_size]
-#
-#   return history
-
 def run_episode(env, model, in_size, out_size, motor_pop_size, max_steps, sim_time, eps=0, learning=False, device='cpu'):
   # Initialize the environment and get its state
   state, coords, _ = env.reset()
@@ -239,12 +204,12 @@ def run_episode(env, model, in_size, out_size, motor_pop_size, max_steps, sim_ti
     action, out_spikes, chosen_by_policy = select_action(state, sim_time, out_size, eps, model, env)
     observation, reward, terminated, next_state_coords, _ = env.step(action)
     next_state = torch.tensor(observation, dtype=torch.bool, device=device)
+    delta_Q = model.update_table(coords, action, next_state_coords, reward)
 
     # Update history
-    history.append((state.numpy(), coords, action, reward, out_spikes.numpy()))
+    history.append((state.numpy(), coords, action.item(), reward, out_spikes.numpy(), delta_Q))
 
     # Perform one step of the optimization
-    delta_Q = model.update_table(coords, action, next_state_coords, reward)
     if learning:
       model.STDP_RL(state, out_spikes, next_state_coords, delta_Q)
 
@@ -269,9 +234,9 @@ def record_episode(env, model, in_size, out_size, max_steps, sim_time, eps, lear
   plt.clf()
 
 
-def train_STDP_RL(env_width, env_height, max_total_steps, max_steps_per_ep, initialization_steps, eps_start,
+def train_STDP_RL(env_width, env_height, max_total_steps, max_steps_per_ep, eps_start,
                   eps_end, decay_intensity, in_size, out_size, motor_pop_size, sim_time, hyper_params,
-                  env_trace_length, a_plus, a_minus, tc_e_trace, learning_rate, gamma, device='cpu',
+                  env_trace_length, learning_rate, gamma, device='cpu',
                   plot=False):
 
   ## Init model & maze ##
@@ -281,26 +246,14 @@ def train_STDP_RL(env_width, env_height, max_total_steps, max_steps_per_ep, init
   # Inhibit other motor pop, excite own motor pop
   for i in range(4):
     w_out_out[i*motor_pop_size:(i+1)*motor_pop_size, i*motor_pop_size:(i+1)*motor_pop_size] = 0.1
-  model = STDP_RL_Model(in_size, out_size, hyper_params, w_in_out, w_out_out,
-                        a_plus, a_minus, tc_e_trace, learning_rate, gamma, device)
+  model = STDP_RL_Model(in_size, out_size, hyper_params, w_in_out, w_out_out, learning_rate, gamma, device)
   env = Grid_Cell_Maze_Environment(width=env_width, height=env_height, trace_length=env_trace_length,
                                    samples_file='Data/recalled_memories_sorted.pkl',
                                    load_from='Data/env.pkl')
 
-  ## Pre-training recording ##
-  # if plot:
-  #   record_episode(env, model, in_size, out_size, 25, sim_time, eps=0, learning=False, device=device,
-  #                  filename="pre_training.gif")
-
-  ## Exploration Phase ##
-  t = 0
-  while t < initialization_steps:
-    history = run_episode(env, model, in_size, out_size, motor_pop_size, max_steps_per_ep, sim_time, eps=1, learning=False, device=device)
-    t += len(history)
-
-  # model.plot_q_table(env)
   ## Training loop ##
   episode_durations = []
+  move_count = np.zeros((env.maze.width, env.maze.height, 4))
   universal_history = []
   episodes = 0
   total_steps = 0
@@ -308,21 +261,29 @@ def train_STDP_RL(env_width, env_height, max_total_steps, max_steps_per_ep, init
   while total_steps < max_total_steps:
     eps = eps_end + (eps_start - eps_end) * math.exp(-decay_intensity * total_steps / (max_total_steps))
     history = run_episode(env, model, in_size, out_size, motor_pop_size, max_steps_per_ep, sim_time, eps=eps, learning=True, device=device)
-    universal_history.extend(history)
+    universal_history.append(history)
+    # update move count
+    for _, coords, action, _, _, _ in history:
+      move_count[coords[0], coords[1], action] += 1
     total_steps += len(history)
     episode_durations.append(len(history))
     print(f"Episode {episodes} lasted {len(history)} steps, eps = {round(eps, 2)} total steps = {total_steps}, "
-          f"avg reward = {round(sum([h[3] for h in history])/len(history), 2)}")
+          f"avg reward = {round(sum([h[3] for h in history])/len(history), 2)} "
+          f"avg weight = {round(model.weights.value.mean().item(), 5)}")
     episodes += 1
 
-  # Post-training recording ##
-  if plot:
-    env.animate_history(history, motor_pop_size=motor_pop_size)
-    model.plot()
-    plt.show()
-    model.plot_q_table(env)
-    # Plot confusion
-    model.plot_move_count(universal_history, env)
+  ## Post-training recording ##
+  with open('Output/universal_history.pkl', 'wb') as f:
+    pkl.dump(universal_history, f)
+  # if plot:
+    # for i, h in enumerate(universal_history):
+    #   env.animate_history(h, file_name=f"Output/ep{i}.gif" ,motor_pop_size=motor_pop_size)
+    # env.animate_history(history, motor_pop_size=motor_pop_size)
+    # model.plot()
+    # plt.show()
+    # model.plot_q_table(env)
+    # # Plot confusion
+    # model.plot_move_count(move_count, env)
 
   ## Plot Episodes##
   if plot:

@@ -63,7 +63,10 @@ class GC_Module:
                    'gold', 'indigo', 'maroon', 'navy', 'peru', 'sienna', 'tomato', 'violet', 'wheat',
                    'yellow', 'aquamarine', 'azure', 'beige', 'blueviolet', 'burlywood', 'cadetblue',
                    'chartreuse', 'coral', 'cornflowerblue', 'crimson', 'darkblue', 'darkcyan',
-                   'darkgoldenrod', 'darkgray', 'darkgreen', 'darkkhaki', 'darkmagenta', 'darkolivegreen',]
+                   'darkgoldenrod', 'darkgray', 'darkgreen', 'darkkhaki', 'darkmagenta', 'darkolivegreen',
+                   'darkorange', 'darkorchid', 'darkred', 'darksalmon', 'darkseagreen', 'darkslateblue',
+                   'darkslategray', 'darkturquoise', 'darkviolet', 'deeppink', 'deepskyblue', 'dimgray',
+                   'dodgerblue', 'firebrick', 'floralwhite', 'forestgreen', 'fuchsia', 'gainsboro',]
 
   # Generate Grid Cell activity
   def generate(self, pos):

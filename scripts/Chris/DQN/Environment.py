@@ -7,7 +7,6 @@ from labyrinth.grid import Cell, Direction
 from labyrinth.maze import Maze
 from labyrinth.solve import MazeSolver
 from matplotlib.pyplot import plot as plt
-from matplotlib.animation import FuncAnimation
 
 import pickle as pkl
 import matplotlib.pyplot as plt
@@ -126,40 +125,6 @@ class Maze_Environment():
   def save(self, filename):
     with open(filename, 'wb') as f:
       pkl.dump(self, f)
-
-  def animate_history(self, run_history, file_name='maze.gif', motor_pop_size=50):
-    fig = plt.figure()
-    gs = fig.add_gridspec(1, 4)
-    out_s_ax = fig.add_subplot(gs[0, 0])
-    asso_s_ax = fig.add_subplot(gs[0, 1])
-    maze_ax = fig.add_subplot(gs[0, 2:])
-    # self.plot(maze_ax)
-    def update(i):
-      # Maze axis
-      maze_ax.clear()
-      self.plot(maze_ax)
-      maze_ax.plot(self.path_history[i][0][1], self.path_history[i][0][0], 'yo')
-      maze_ax.set_title(f'Step {i}, Reward: {self.path_history[i][1]}, Action: {self.path_history[i][3]}')
-      maze_ax.set_aspect('equal')
-      # Out spikes axis
-      out_shape = run_history[i][-1].T.shape
-      out_s_ax.clear()
-      out_s_ax.imshow(run_history[i][-1].T)
-      for y in range(0, out_shape[0], motor_pop_size):    # MANUAL SET NUMBER
-        out_s_ax.plot([0, out_shape[1]-1], [y, y], color='red')
-      out_s_ax.set_title('Output spikes')
-      out_s_ax.set_ylabel('Output neurons')
-      out_s_ax.set_xlabel('Time')
-      # Asso spikes axis
-      asso_s_ax.clear()
-      asso_s_ax.imshow(run_history[i][0].T)
-      asso_s_ax.set_title('Asso. spikes')
-      asso_s_ax.set_ylabel('Asso. neurons')
-      asso_s_ax.set_xlabel('Time')
-      fig.tight_layout()
-
-    ani = FuncAnimation(plt.gcf(), update, frames=len(self.path_history), repeat=False)
-    ani.save(file_name, writer='ffmpeg', fps=2)
 
 class Grid_Cell_Maze_Environment(Maze_Environment):
   def __init__(self, width, height, trace_length=5, samples_file='Data/recalled_memories_sorted.pkl', load_from=None):
