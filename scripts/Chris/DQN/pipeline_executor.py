@@ -142,25 +142,25 @@ if __name__ == '__main__':
     'INH_SIZE': [250, 500],           # Integer
     'GRID_CELL_RADIUS': [0.1, 0.75],  # Float
     'GRID_CELL_SCALE': [1, 5],        # Float
-    'exc_thresh': [-55, -50],         # Float/Integer
-    'exc_theta_plus': [0, 5],         # Float/Integer
-    'exc_refrac': [1, 5],             # Float/Integer
-    'exc_reset': [-65, -60],          # Float/Integer
-    'exc_tc_theta_decay': [500, 1000],  # Float/Integer
-    'exc_tc_decay': [30, 50],         # Float/Integer
-    'inh_thresh': [-55, -50],         # Float/Integer
-    'inh_theta_plus': [0, 5],         # Float/Integer
-    'inh_refrac': [1, 5],             # Float/Integer
-    'inh_reset': [-65, -60],          # Float/Integer
-    'inh_tc_theta_decay': [500, 1000],# Float/Integer
-    'inh_tc_decay': [30, 50],         # Float/Integer
-    'thresh_out': [-60, -55],         # Float/Integer
-    'theta_plus_out': [0, 5],         # Float/Integer
-    'refrac_out': [1, 5],             # Float/Integer
-    'reset_out': [-65, -60],          # Float/Integer
-    'tc_theta_decay_out': [1000, 2000], # Float/Integer
-    'tc_decay_out': [30, 50],         # Float/Integer
-    'DECAY_INTENSITY': [3, 5],        # Float/Integer
+    'exc_thresh': [-55, -50],         # Integer
+    'exc_theta_plus': [0, 5],         # Integer
+    'exc_refrac': [1, 5],             # Integer
+    'exc_reset': [-65, -60],          # Integer
+    'exc_tc_theta_decay': [500, 1000],  # Integer
+    'exc_tc_decay': [30, 50],         # Integer
+    'inh_thresh': [-55, -50],         # Integer
+    'inh_theta_plus': [0, 5],         # Integer
+    'inh_refrac': [1, 5],             # Integer
+    'inh_reset': [-65, -60],          # Integer
+    'inh_tc_theta_decay': [500, 1000],# Integer
+    'inh_tc_decay': [30, 50],         # Integer
+    'thresh_out': [-60, -55],         # Integer
+    'theta_plus_out': [0, 5],         # Integer
+    'refrac_out': [1, 5],             # Integer
+    'reset_out': [-65, -60],          # Integer
+    'tc_theta_decay_out': [1000, 2000], # Integer
+    'tc_decay_out': [30, 50],         # Integer
+    'DECAY_INTENSITY': [3, 5],        # Integer
     'MAX_STEPS_PER_EP': [100, 200],   # Integer
     'MAX_TOTAL_STEPS': [2000, 5000],  # Integer
     'MOTOR_POP_SIZE': [50, 100],      # Integer
