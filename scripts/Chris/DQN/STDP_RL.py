@@ -293,3 +293,8 @@ def train_STDP_RL(env_width, env_height, max_total_steps, max_steps_per_ep, eps_
     plt.xlabel("Episode")
     plt.show()
     model.plot()
+
+  ## Return score ##
+  i = int(len(episode_durations) * 0.2)
+  score = np.average(episode_durations[-2:])
+  return score

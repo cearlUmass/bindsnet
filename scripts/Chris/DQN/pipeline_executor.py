@@ -85,9 +85,11 @@ def run(parameters: dict):
   forward_reservoir(EXC_SIZE, INH_SIZE, SIM_TIME, PLOT)
 
   ## Train model w/ STDP-RL ##
-  train_STDP_RL(HEIGHT, WIDTH, MAX_TOTAL_STEPS, MAX_STEPS_PER_EP, EPS_START, EPS_END,
+  score = train_STDP_RL(HEIGHT, WIDTH, MAX_TOTAL_STEPS, MAX_STEPS_PER_EP, EPS_START, EPS_END,
                 DECAY_INTENSITY, EXC_SIZE, OUT_SIZE, MOTOR_POP_SIZE, SIM_TIME, out_hyperparams, ENV_TRACE_LENGTH,
                 LR, GAMMA, device='cpu', plot=PLOT)
+  print(f"Score: {score}")
+  return score
 
 if __name__ == '__main__':
   p = {
