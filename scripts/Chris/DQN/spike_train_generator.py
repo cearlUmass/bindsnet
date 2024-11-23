@@ -3,7 +3,7 @@ import numpy as np
 
 # Take in grid cell activity vector and turn into spike train
 # max_freq: Maximum frequency of spikes
-def intensity_to_spike(intensity, time, max_freq, labels=None):
+def intensity_to_spike(intensity, time, max_freq):
   # Normalize [0, 1]
   intensity = (intensity - min(intensity)) / (max(intensity) - min(intensity))
 
@@ -19,14 +19,9 @@ def intensity_to_spike(intensity, time, max_freq, labels=None):
 
   return spike_train
 
-def spike_train_generator(sim_time, gc_multiples, max_freq):
+def spike_train_generator(sim_time, gc_multiples, max_freq, intensities, labels, save=True):
   print("Generating Spike Trains...")
 
-  ## Transform intensities to spike trains ##
-  with open('Data/grid_cell_intensities.pkl', 'rb') as f:
-    intensities, labels = pkl.load(f)
-  # with open('Data/grid_cell_intensities_sorted.pkl', 'rb') as f:
-  #   intensities_sorted = pkl.load(f)
   spike_trains = np.zeros(
     (len(intensities), sim_time, len(intensities[0]), gc_multiples))  # (num_samples, time, gc, num_gc)
   sorted_spike_trains = {}
@@ -40,9 +35,10 @@ def spike_train_generator(sim_time, gc_multiples, max_freq):
       sorted_spike_trains[adjusted_label].append(spike_trains[i])
 
   ## Save to file ##
-  with open('Data/grid_cell_spk_trains.pkl', 'wb') as f:
-    pkl.dump((spike_trains, labels), f)
-  with open('Data/grid_cell_spk_trains_sorted.pkl', 'wb') as f:
-    pkl.dump((sorted_spike_trains), f)
+  if save:
+    with open('Data/grid_cell_spk_trains.pkl', 'wb') as f:
+      pkl.dump((spike_trains, labels), f)
+    with open('Data/grid_cell_spk_trains_sorted.pkl', 'wb') as f:
+      pkl.dump((sorted_spike_trains), f)
 
   return spike_trains, labels, sorted_spike_trains

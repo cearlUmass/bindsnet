@@ -127,7 +127,7 @@ class Maze_Environment():
       pkl.dump(self, f)
 
 class Grid_Cell_Maze_Environment(Maze_Environment):
-  def __init__(self, width, height, trace_length=5, samples_file='Data/recalled_memories_sorted.pkl', load_from=None):
+  def __init__(self, width, height, recalled_memories_sorted, trace_length=5, load_from=None):
     if load_from is not None:
       with open(load_from, 'rb') as f:
         super().__init__(width, height, trace_length)
@@ -137,11 +137,7 @@ class Grid_Cell_Maze_Environment(Maze_Environment):
       super().__init__(width, height, trace_length)
 
     self.reward_trace = self.calculate_reward_trace(trace_length)
-
-    # Load spike train samples
-    # {position: [spike_trains]}
-    with open(samples_file, 'rb') as f:
-      self.samples = pkl.load(f)
+    self.samples = recalled_memories_sorted
 
   # Returns:
   # - Spike train of grid cell corresponding to agent's position

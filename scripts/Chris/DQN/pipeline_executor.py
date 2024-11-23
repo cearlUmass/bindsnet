@@ -17,6 +17,9 @@ def run(parameters: dict):
   # If you want plots
   PLOT = False
 
+  # If you want to save to disk
+  SAVE = False
+
   ## Model Constants ##
   WIDTH = parameters['WIDTH']
   HEIGHT = parameters['HEIGHT']
@@ -73,23 +76,23 @@ def run(parameters: dict):
   offsets = list(zip(x_offsets, y_offsets))  # Grid Cell x & y offsets
   scales = [np.random.uniform(0.1, GRID_CELL_SCALE) for i in range(NUM_CELLS)]  # Dist. between Grid Cell peaks
   vars = [GRID_CELL_RADIUS] * NUM_CELLS  # Width of grid cell activity
-  sample_generator(scales, offsets, vars, (0, WIDTH), (0, HEIGHT), SAMPLES_PER_POS,
-                                                     noise=NOISE, padding=1, plot=PLOT)
+  samples, labels, sorted_samples = sample_generator(scales, offsets, vars, (0, WIDTH), (0, HEIGHT), SAMPLES_PER_POS,
+                                                     noise=NOISE, padding=1, plot=PLOT, save=SAVE)
 
   ## Spike Train Generation ##
-  spike_train_generator(SIM_TIME, GC_MULTIPLES, MAX_SPIKE_FREQ)
+  spike_trains, labels, sorted_spike_trains = spike_train_generator(SIM_TIME, GC_MULTIPLES, MAX_SPIKE_FREQ, samples, labels, SAVE)
 
   ## Create association area ##
   hyper_params = exc_hyper_params | inh_hyper_params
-  create_reservoir(EXC_SIZE, INH_SIZE, NUM_CELLS, GC_MULTIPLES, hyper_params, PLOT)
+  res = create_reservoir(EXC_SIZE, INH_SIZE, NUM_CELLS, GC_MULTIPLES, hyper_params, PLOT, SAVE)
 
   ## Pass Grid-Cell spike train through association area ##
-  forward_reservoir(EXC_SIZE, INH_SIZE, SIM_TIME, PLOT)
+  recalled_memories, labels, recalled_memories_sorted = forward_reservoir(EXC_SIZE, INH_SIZE, SIM_TIME, spike_trains, labels, res, PLOT, SAVE)
 
   ## Train model w/ STDP-RL ##
-  score = train_STDP_RL(HEIGHT, WIDTH, MAX_TOTAL_STEPS, MAX_STEPS_PER_EP, EPS_START, EPS_END,
+  score = train_STDP_RL(recalled_memories_sorted, HEIGHT, WIDTH, MAX_TOTAL_STEPS, MAX_STEPS_PER_EP, EPS_START, EPS_END,
                 DECAY_INTENSITY, EXC_SIZE, OUT_SIZE, MOTOR_POP_SIZE, SIM_TIME, out_hyperparams, ENV_TRACE_LENGTH,
-                LR, GAMMA, device='cpu', plot=PLOT)
+                LR, GAMMA, device='cpu', plot=PLOT, save=SAVE)
   print(f"Score: {score}")
   return score
 

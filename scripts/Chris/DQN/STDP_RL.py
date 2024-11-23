@@ -234,10 +234,10 @@ def record_episode(env, model, in_size, out_size, max_steps, sim_time, eps, lear
   plt.clf()
 
 
-def train_STDP_RL(env_width, env_height, max_total_steps, max_steps_per_ep, eps_start,
+def train_STDP_RL(recalled_memories_sorted, env_width, env_height, max_total_steps, max_steps_per_ep, eps_start,
                   eps_end, decay_intensity, in_size, out_size, motor_pop_size, sim_time, hyper_params,
                   env_trace_length, learning_rate, gamma, device='cpu',
-                  plot=False):
+                  plot=False, save=True):
 
   ## Init model & maze ##
   w_in_out = torch.rand((in_size, out_size))*2
@@ -248,8 +248,8 @@ def train_STDP_RL(env_width, env_height, max_total_steps, max_steps_per_ep, eps_
     w_out_out[i*motor_pop_size:(i+1)*motor_pop_size, i*motor_pop_size:(i+1)*motor_pop_size] = 0.1
   model = STDP_RL_Model(in_size, out_size, hyper_params, w_in_out, w_out_out, learning_rate, gamma, device)
   env = Grid_Cell_Maze_Environment(width=env_width, height=env_height, trace_length=env_trace_length,
-                                   samples_file='Data/recalled_memories_sorted.pkl',
-                                   load_from='Data/env.pkl')
+                                   recalled_memories_sorted=recalled_memories_sorted,
+                                   load_from='env.pkl')
 
   ## Training loop ##
   episode_durations = []
@@ -273,8 +273,9 @@ def train_STDP_RL(env_width, env_height, max_total_steps, max_steps_per_ep, eps_
     episodes += 1
 
   ## Post-training recording ##
-  with open('Output/universal_history.pkl', 'wb') as f:
-    pkl.dump(universal_history, f)
+  if save:
+    with open('Output/universal_history.pkl', 'wb') as f:
+      pkl.dump(universal_history, f)
   # if plot:
     # for i, h in enumerate(universal_history):
     #   env.animate_history(h, file_name=f"Output/ep{i}.gif" ,motor_pop_size=motor_pop_size)

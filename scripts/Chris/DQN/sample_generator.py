@@ -27,7 +27,7 @@ def inter_positional_spread(env_to_gc):
 
 # Generate grid cell activity for all integer coordinate positions in environment
 def sample_generator(scales, offsets, vars, x_range, y_range,
-                     samples_per_pos, noise=0.1, padding=0.5, plot=False):
+                     samples_per_pos, noise=0.1, padding=0.5, plot=False, save=True):
   print('Generating samples...')
   sorted_samples = {}
   samples = np.zeros((x_range[1] * y_range[1] * samples_per_pos, len(scales)))
@@ -49,10 +49,11 @@ def sample_generator(scales, offsets, vars, x_range, y_range,
         ind = i * y_range[1] * samples_per_pos + j * samples_per_pos + k
         samples[ind] = a
         labels[ind] = np.array(pos)
-  with open('Data/grid_cell_intensities.pkl', 'wb') as f:
-    pkl.dump((samples, labels), f)
-  with open('Data/grid_cell_intensities_sorted.pkl', 'wb') as f:
-    pkl.dump((sorted_samples), f)
+  if save:
+    with open('Data/grid_cell_intensities.pkl', 'wb') as f:
+      pkl.dump((samples, labels), f)
+    with open('Data/grid_cell_intensities_sorted.pkl', 'wb') as f:
+      pkl.dump((sorted_samples), f)
 
   if plot:
     module.plot_centers()

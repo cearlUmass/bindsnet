@@ -6,7 +6,7 @@ import numpy as np
 from matplotlib import pyplot as plt
 
 def create_reservoir(exc_size, inh_size, num_grid_cells, gc_multiples,
-                     hyper_params, plot=False):
+                     hyper_params, plot=False, save=True):
   print("Creating Reservoir...")
 
   ## Create synaptic weights ##
@@ -27,5 +27,8 @@ def create_reservoir(exc_size, inh_size, num_grid_cells, gc_multiples,
                   w_in_exc, w_in_inh, w_exc_exc, w_exc_inh, w_inh_exc, w_inh_inh)
 
   ## Save ##
-  with open('Data/reservoir_module.pkl', 'wb') as f:
-    pkl.dump(res, f)
+  if save:
+    with open('Data/reservoir_module.pkl', 'wb') as f:
+      pkl.dump(res, f)
+
+  return res
