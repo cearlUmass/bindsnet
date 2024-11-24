@@ -99,10 +99,7 @@ def run(parameters: dict):
 if __name__ == '__main__':
   p = {
     # Model Parameters
-    'NOISE': 0.1,               # Noise in sampling
     'NUM_CELLS': 35,            # Number of grid cells
-    'SIM_TIME': 50,             # How long (ms) to run model per step
-    'MAX_SPIKE_FREQ': 0.8,      # Maximum spike frequency for Grid Cells
     'EXC_SIZE': 1000,           # Number of excitatory neurons
     'INH_SIZE': 250,            # Number of inhibitory neurons
     'GRID_CELL_RADIUS': .25,    # Width of grid cell activity
@@ -176,6 +173,8 @@ if __name__ == '__main__':
     'HEIGHT': 5,                # Height of the grid
     'SAMPLES_PER_POS': 1,       # Number of samples per position
     'NOISE': 0.1,               # Noise in sampling
+    'SIM_TIME': 50,             # How long (ms) to run model per step
+    'MAX_SPIKE_FREQ': 0.8,      # Maximum spike frequency for Grid Cells
     'GC_MULTIPLES': 1,          # How many repeats of Grid Cells
 
     # Training Constants
