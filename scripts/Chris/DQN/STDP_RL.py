@@ -236,7 +236,7 @@ def record_episode(env, model, in_size, out_size, max_steps, sim_time, eps, lear
 
 def train_STDP_RL(recalled_memories_sorted, env_width, env_height, max_total_steps, max_steps_per_ep, eps_start,
                   eps_end, decay_intensity, in_size, out_size, motor_pop_size, sim_time, hyper_params,
-                  env_trace_length, learning_rate, gamma, device='cpu',
+                  env_trace_length, env_path, learning_rate, gamma, device='cpu',
                   plot=False, save=True):
 
   ## Init model & maze ##
@@ -249,7 +249,7 @@ def train_STDP_RL(recalled_memories_sorted, env_width, env_height, max_total_ste
   model = STDP_RL_Model(in_size, out_size, hyper_params, w_in_out, w_out_out, learning_rate, gamma, device)
   env = Grid_Cell_Maze_Environment(width=env_width, height=env_height, trace_length=env_trace_length,
                                    recalled_memories_sorted=recalled_memories_sorted,
-                                   load_from='env.pkl')
+                                   load_from=env_path)
 
   ## Training loop ##
   episode_durations = []

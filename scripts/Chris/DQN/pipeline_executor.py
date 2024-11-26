@@ -1,5 +1,6 @@
 import numpy as np
 import pickle as pkl
+import os
 
 import torch
 
@@ -91,7 +92,7 @@ def run(parameters: dict):
 
   ## Train model w/ STDP-RL ##
   score = train_STDP_RL(recalled_memories_sorted, HEIGHT, WIDTH, MAX_TOTAL_STEPS, MAX_STEPS_PER_EP, EPS_START, EPS_END,
-                DECAY_INTENSITY, EXC_SIZE, OUT_SIZE, MOTOR_POP_SIZE, SIM_TIME, out_hyperparams, ENV_TRACE_LENGTH,
+                DECAY_INTENSITY, EXC_SIZE, OUT_SIZE, MOTOR_POP_SIZE, SIM_TIME, out_hyperparams, ENV_TRACE_LENGTH, parameters['ENV_PATH'],
                 LR, GAMMA, device='cpu', plot=PLOT, save=SAVE)
   print(f"Score: {score}")
   return score
@@ -183,5 +184,6 @@ if __name__ == '__main__':
     'MAX_STEPS_PER_EP': 100,    # Max steps per episode
     'OUT_SIZE': 4 * p['MOTOR_POP_SIZE'], # Motor-Output population size
     'ENV_TRACE_LENGTH': 8,      # Length of the environment trace
-  }
+    'ENV_PATH': os.path.dirname(os.path.abspath(__file__))+'/Env/' + 'env.pkl', # Path to the environment  
+    }
   run(p | c)
