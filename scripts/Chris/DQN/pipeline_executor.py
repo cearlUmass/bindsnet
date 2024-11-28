@@ -32,7 +32,8 @@ def run(parameters: dict):
   EXC_SIZE = parameters['EXC_SIZE']
   INH_SIZE = parameters['INH_SIZE']
   GRID_CELL_RADIUS = parameters['GRID_CELL_RADIUS']
-  GRID_CELL_SCALE = parameters['GRID_CELL_SCALE']
+  GRID_CELL_DIST_MIN = parameters['GRID_CELL_DIST_MIN']
+  GRID_CELL_DIST_MAX = parameters['GRID_CELL_DIST_MAX']
   exc_hyper_params = {
     'thresh_exc': parameters['exc_thresh'],
     'theta_plus_exc': parameters['exc_theta_plus'],
@@ -74,7 +75,7 @@ def run(parameters: dict):
   x_offsets = np.random.uniform(-1, 1, NUM_CELLS)
   y_offsets = np.random.uniform(-1, 1, NUM_CELLS)
   offsets = list(zip(x_offsets, y_offsets))  # Grid Cell x & y offsets
-  scales = [np.random.uniform(0.1, GRID_CELL_SCALE) for i in range(NUM_CELLS)]  # Dist. between Grid Cell peaks
+  scales = [np.random.uniform(low=GRID_CELL_DIST_MIN, high=GRID_CELL_DIST_MAX) for i in range(NUM_CELLS)]  # Dist. between Grid Cell peaks
   vars = [GRID_CELL_RADIUS] * NUM_CELLS  # Width of grid cell activity
   samples, labels, sorted_samples = sample_generator(scales, offsets, vars, (0, WIDTH), (0, HEIGHT), SAMPLES_PER_POS,
                                                      noise=NOISE, padding=1, plot=PLOT, save=SAVE)
@@ -98,74 +99,68 @@ def run(parameters: dict):
 
 if __name__ == '__main__':
   p = {
-    # Model Parameters
-    'NUM_CELLS': 35,            # Number of grid cells
-    'EXC_SIZE': 1000,           # Number of excitatory neurons
-    'INH_SIZE': 250,            # Number of inhibitory neurons
-    'GRID_CELL_RADIUS': .25,    # Width of grid cell activity
-    'GRID_CELL_SCALE': 3,       # Dist. between Grid Cell peaks
-
-    # Excitatory neuron hyperparameters
-    'exc_thresh': -55,          # Firing threshold
-    'exc_theta_plus': 0,        # Increase in refractory
-    'exc_refrac': 1,            # base refractory
-    'exc_reset': -65,           # Membrane reset
-    'exc_tc_theta_decay': 500,  # Refractory rate of decay (bigger = slower decay)
-    'exc_tc_decay': 30,         # Membrane potential rate of decay (bigger = slower decay)
-
-    # Inhibitory neuron hyperparameters
-    'inh_thresh': -55,          # Firing threshold
-    'inh_theta_plus': 0,        # Increase in refractory
-    'inh_refrac': 1,            # base refractory
-    'inh_reset': -65,           # Membrane reset
-    'inh_tc_theta_decay': 500,  # Refractory rate of decay (bigger = slower decay)
-    'inh_tc_decay': 30,         # Membrane potential rate of decay (bigger = slower decay)
-
-    # Output neuron hyperparameters
-    'thresh_out': -60,          # Firing threshold
-    'theta_plus_out': 0,        # Increase in refractory
-    'refrac_out': 1,            # base refractory
-    'reset_out': -65,           # Membrane reset
-    'tc_theta_decay_out': 1000, # Refractory rate of decay (bigger = slower decay)
-    'tc_decay_out': 30,         # Membrane potential rate of decay (bigger = slower decay
-
-    # Training Parameters
-    'DECAY_INTENSITY': 3,       # Rate of exponential decay for epsilon
-    'MAX_TOTAL_STEPS': 2000,    # Max total steps during training
-    'MOTOR_POP_SIZE': 50,       # Number of motor neurons per action
-    'LR': 0.001,                # Weight Learning rate
-    'GAMMA': 0.7,               # Q-Learning Discount factor
+    "DECAY_INTENSITY": 4,
+    "EXC_SIZE": 1000,
+    "GAMMA": 0.7,
+    "GRID_CELL_RADIUS": 0.1,
+    "GRID_CELL_DIST_MIN": 0.1,
+    "GRID_CELL_DIST_MAX": 1.22,
+    "INH_SIZE": 499,
+    "LR": 0.001,
+    "MAX_STEPS_PER_EP": 100,
+    "MAX_TOTAL_STEPS": 3492,
+    "MOTOR_POP_SIZE": 99,
+    "NUM_CELLS": 49,
+    "exc_refrac": 1,
+    "exc_reset": -60,
+    "exc_tc_decay": 36,
+    "exc_tc_theta_decay": 999,
+    "exc_theta_plus": 4,
+    "exc_thresh": -50,
+    "inh_refrac": 4,
+    "inh_reset": -60,
+    "inh_tc_decay": 49,
+    "inh_tc_theta_decay": 998,
+    "inh_theta_plus": 4,
+    "inh_thresh": -50,
+    "refrac_out": 4,
+    "reset_out": -60,
+    "tc_decay_out": 30,
+    "tc_theta_decay_out": 1266,
+    "theta_plus_out": 0,
+    "thresh_out": -59,
   }
   r = {
-    'NUM_CELLS': [35, 50],            # Integer
-    'EXC_SIZE': [1000, 2000],         # Integer
-    'INH_SIZE': [250, 500],           # Integer
-    'GRID_CELL_RADIUS': [0.1, 0.75],  # Float
-    'GRID_CELL_SCALE': [1, 5],        # Float
-    'exc_thresh': [-55, -50],         # Integer
-    'exc_theta_plus': [0, 5],         # Integer
+    'NUM_CELLS': [35, 100],            # Integer
+    'EXC_SIZE': [500, 3000],         # Integer
+    'INH_SIZE': [250, 2000],           # Integer
+    'GRID_CELL_RADIUS': [0.1, 0.75],  # Float (No smaller; unrealistic)
+    'GRID_CELL_DIST_MIN': [0.1, 1],        # Float
+    'GRID_CELL_DIST_MAX': [1.5, 5],      # Float
+    'exc_thresh': [-55, -40],         # Integer
+    'exc_theta_plus': [0, 10],         # Integer
     'exc_refrac': [1, 5],             # Integer
     'exc_reset': [-65, -60],          # Integer
-    'exc_tc_theta_decay': [500, 1000],  # Integer
+    'exc_tc_theta_decay': [500, 3000],  # Integer
     'exc_tc_decay': [30, 50],         # Integer
-    'inh_thresh': [-55, -50],         # Integer
+    'inh_thresh': [-55, -40],         # Integer
     'inh_theta_plus': [0, 5],         # Integer
     'inh_refrac': [1, 5],             # Integer
     'inh_reset': [-65, -60],          # Integer
-    'inh_tc_theta_decay': [500, 1000],# Integer
+    'inh_tc_theta_decay': [500, 3000],# Integer
     'inh_tc_decay': [30, 50],         # Integer
-    'thresh_out': [-60, -55],         # Integer
+    'thresh_out': [-55, -40],         # Integer
     'theta_plus_out': [0, 5],         # Integer
     'refrac_out': [1, 5],             # Integer
     'reset_out': [-65, -60],          # Integer
-    'tc_theta_decay_out': [1000, 2000], # Integer
+    'tc_theta_decay_out': [500, 3000], # Integer
     'tc_decay_out': [30, 50],         # Integer
-    'DECAY_INTENSITY': [3, 5],        # Integer
-    'MAX_STEPS_PER_EP': [100, 200],   # Integer
+    'DECAY_INTENSITY': [3, 10],       # Integer
+    'MAX_STEPS_PER_EP': [50, 200],   # Integer
     'MAX_TOTAL_STEPS': [2000, 5000],  # Integer
-    'MOTOR_POP_SIZE': [50, 100],      # Integer
-    'LR': [0.001, 0.01],              # Float
-    'GAMMA': [0.7, 0.9],              # Float
+    'MOTOR_POP_SIZE': [50, 250],      # Integer
+    'LR': [0.0001, 0.01],             # Float
+    'GAMMA': [0.5, 0.9],              # Float
   }
   c = {
     # Model Constants
@@ -182,6 +177,6 @@ if __name__ == '__main__':
     'EPS_END': 0,               # Epsilon final val
     'MAX_STEPS_PER_EP': 100,    # Max steps per episode
     'OUT_SIZE': 4 * p['MOTOR_POP_SIZE'], # Motor-Output population size
-    'ENV_TRACE_LENGTH': 8,      # Length of the environment trace
+    'ENV_TRACE_LENGTH': 0,      # Length of the environment trace
   }
   run(p | c)
