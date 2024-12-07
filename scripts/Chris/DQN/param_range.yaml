@@ -1,0 +1,184 @@
+NUM_CELLS:
+  min: 35
+  max: 100
+  type: int
+  name: NUM_CELLS
+
+EXC_SIZE:
+  min: 500
+  max: 3000
+  type: int
+  name: EXC_SIZE
+
+INH_SIZE:
+  min: 250
+  max: 2000
+  type: int
+  name: INH_SIZE
+
+GRID_CELL_RADIUS:
+  min: 0.1
+  max: 0.75
+  type: float
+  round: 3
+  name: GRID_CELL_RADIUS
+
+GRID_CELL_DIST_MIN:
+  min: 0.1
+  max: 1
+  type: float
+  round: 3
+  name: GRID_CELL_DIST_MIN
+
+GRID_CELL_DIST_MAX:
+  min: 1.5
+  max: 5
+  type: float
+  round: 3
+  name: GRID_CELL_DIST_MAX
+
+exc_thresh:
+  min: -55
+  max: -40
+  type: int
+  name: exc_thresh
+
+exc_theta_plus:
+  min: 0
+  max: 10
+  type: int
+  name: exc_theta_plus
+
+exc_refrac:
+  min: 1
+  max: 5
+  type: int
+  name: exc_refrac
+
+exc_reset:
+  min: -65
+  max: -60
+  type: int
+  name: exc_reset
+
+exc_tc_theta_decay:
+  min: 500
+  max: 3000
+  type: int
+  name: exc_tc_theta_decay
+
+exc_tc_decay:
+  min: 30
+  max: 50
+  type: int
+  name: exc_tc_decay
+
+inh_thresh:
+  min: -55
+  max: -40
+  type: int
+  name: inh_thresh
+
+inh_theta_plus:
+  min: 0
+  max: 5
+  type: int
+  name: inh_theta_plus
+
+inh_refrac:
+  min: 1
+  max: 5
+  type: int
+  name: inh_refrac
+
+inh_reset:
+  min: -65
+  max: -60
+  type: int
+  name: inh_reset
+
+inh_tc_theta_decay:
+  min: 500
+  max: 3000
+  type: int
+  name: inh_tc_theta_decay
+
+inh_tc_decay:
+  min: 30
+  max: 50
+  type: int
+  name: inh_tc_decay
+
+thresh_out:
+  min: -55
+  max: -40
+  type: int
+  name: thresh_out
+
+theta_plus_out:
+  min: 0
+  max: 5
+  type: int
+  name: theta_plus_out
+
+refrac_out:
+  min: 1
+  max: 5
+  type: int
+  name: refrac_out
+
+reset_out:
+  min: -65
+  max: -60
+  type: int
+  name: reset_out
+
+tc_theta_decay_out:
+  min: 500
+  max: 3000
+  type: int
+  name: tc_theta_decay_out
+
+tc_decay_out:
+  min: 30
+  max: 50
+  type: int
+  name: tc_decay_out
+
+DECAY_INTENSITY:
+  min: 3
+  max: 10
+  type: int
+  name: DECAY_INTENSITY
+
+MAX_STEPS_PER_EP:
+  min: 50
+  max: 200
+  type: int
+  name: MAX_STEPS_PER_EP
+
+MAX_TOTAL_STEPS:
+  min: 2000
+  max: 5000
+  type: int
+  name: MAX_TOTAL_STEPS
+
+MOTOR_POP_SIZE:
+  min: 50
+  max: 250
+  type: int
+  name: MOTOR_POP_SIZE
+
+LR:
+  min: 0.0001
+  max: 0.01
+  type: float
+  round: 3
+  name: LR
+
+GAMMA:
+  min: 0.5
+  max: 0.9
+  type: float
+  round: 3
+  name: GAMMA
