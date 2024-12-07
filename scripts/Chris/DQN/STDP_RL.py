@@ -19,7 +19,8 @@ from scripts.Chris.DQN.Memory import sparsify
 
 
 class STDP_RL_Model(Network):
-  def __init__(self, in_size, out_size, hyper_params, w_in_out, w_out_out, learning_rate, gamma, device='cpu'):
+  def __init__(self, in_size, out_size, hyper_params, w_in_out, w_out_out, alpha, gamma,
+               lr, decay, wmin, wmax, device='cpu'):
     super().__init__()
 
     ## Layers ##
@@ -61,9 +62,14 @@ class STDP_RL_Model(Network):
 
     ## STDP-RL Parameters ##
     self.eligibility = torch.zeros(in_size, out_size, device=device)
-    self.lr = learning_rate
+    self.lr = lr
+    self.decay = decay
+    self.wmin = wmin
+    self.wmax = wmax
+
 
     ## Q-Learning parameters ##
+    self.alpha = alpha
     self.gamma = gamma
     self.q_table = {}
 
@@ -73,21 +79,14 @@ class STDP_RL_Model(Network):
     self.eligibility = torch.outer(in_activity, out_activity)
 
     # Update weights
-    alpha = 0.002
     if np.abs(delta_Q) < 1e-4:
       r = 0
     else:
       r = np.sign(delta_Q)
-    # next_state_val = 0 if next_state not in self.q_table else max(self.q_table[next_state])
-    # self.weights.value *= (1 - alpha)
-    # self.weights.value += (self.gamma * next_state_val + reward) * self.eligibility * alpha    # When next_state_val = self.lr * reward it stalls; how to fix?
-    self.weights.value[self.eligibility > 0] *= 0.99
-    # self.weights.value[self.eligibility != 0] += (
-    #   torch.normal(mean=0, std=0.01, size=self.weights.value.shape))[self.eligibility != 0]
-    self.weights.value += alpha * r * self.eligibility
     self.weights.value[self.w_mask == 0] = 0
-    self.weights.value[self.weights.value < 0] = 0
-    self.weights.value[self.weights.value > 3] = 3
+    self.weights.value *= (1-self.decay)
+    self.weights.value += self.lr * r * self.eligibility
+    torch.clamp(self.weights.value, self.wmin, self.wmax)
 
   def update_table(self, state, action, next_state, reward):
     # Preprocess state for simpler indexing
@@ -95,13 +94,13 @@ class STDP_RL_Model(Network):
     action = action.item()
     if state not in self.q_table:
       self.q_table[state] = np.zeros(4)    # 4 moves
-      self.q_table[state][action] = self.lr * reward
+      self.q_table[state][action] = self.alpha * reward
       delta_Q = self.q_table[state][action]
     else:
       org_val = self.q_table[state][action]
       next_state_val = 0 if next_state not in self.q_table else max(self.q_table[next_state])
-      self.q_table[state][action] *= (1 - self.lr)  # Decay
-      self.q_table[state][action] += self.lr * (reward + self.gamma * next_state_val)  # Update
+      self.q_table[state][action] *= (1 - self.alpha)  # Decay
+      self.q_table[state][action] += self.alpha * (reward + self.gamma * next_state_val)  # Update
       delta_Q = self.q_table[state][action] - org_val
     return delta_Q
 
@@ -146,7 +145,7 @@ class STDP_RL_Model(Network):
   def plot_move_count(self, history, env):
     fig, ax = plt.subplots()
     move_count = np.zeros((env.maze.width, env.maze.height, 4))
-    for _, coords, action, _, _ in history:
+    for _, coords, action, _, _, _ in history:
       move_count[coords[0], coords[1], action] += 1
     # ax.imshow(max_actions, cmap='hot', interpolation='nearest')
     for i in range(env.maze.width):
@@ -236,7 +235,7 @@ def record_episode(env, model, in_size, out_size, max_steps, sim_time, eps, lear
 
 def train_STDP_RL(recalled_memories_sorted, env_width, env_height, max_total_steps, max_steps_per_ep, eps_start,
                   eps_end, decay_intensity, in_size, out_size, motor_pop_size, sim_time, hyper_params,
-                  env_trace_length, env_path, learning_rate, gamma, device='cpu',
+                  env_trace_length, env_path, alpha, gamma, lr, decay, wmin, wmax, device='cpu',
                   plot=False, save=True):
 
   ## Init model & maze ##
@@ -246,7 +245,8 @@ def train_STDP_RL(recalled_memories_sorted, env_width, env_height, max_total_ste
   # Inhibit other motor pop, excite own motor pop
   for i in range(4):
     w_out_out[i*motor_pop_size:(i+1)*motor_pop_size, i*motor_pop_size:(i+1)*motor_pop_size] = 0.1
-  model = STDP_RL_Model(in_size, out_size, hyper_params, w_in_out, w_out_out, learning_rate, gamma, device)
+  model = STDP_RL_Model(in_size, out_size, hyper_params, w_in_out, w_out_out, alpha, gamma,
+                        lr, decay, wmin, wmax, device)
   env = Grid_Cell_Maze_Environment(width=env_width, height=env_height, trace_length=env_trace_length,
                                    recalled_memories_sorted=recalled_memories_sorted,
                                    load_from=env_path)
@@ -286,14 +286,21 @@ def train_STDP_RL(recalled_memories_sorted, env_width, env_height, max_total_ste
     # # Plot confusion
     # model.plot_move_count(move_count, env)
 
-  ## Plot Episodes##
+  ## Plot ##
   if plot:
+    # Episodes
     plt.plot(episode_durations)
     plt.title("Episode durations")
     plt.ylabel("Duration")
     plt.xlabel("Episode")
     plt.show()
     model.plot()
+
+    # Q-table
+    model.plot_q_table(env)
+
+    # Confusion
+    model.plot_move_count([h for hh in universal_history for h in hh], env)
 
   ## Return score ##
   i = int(len(episode_durations) * 0.2)
