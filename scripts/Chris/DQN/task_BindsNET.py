@@ -147,21 +147,28 @@ def main(args):
         param = yaml.load(f, Loader=yaml.FullLoader)
     
     # try:
-    for gene_num in range(args.total_testsGene_with_same_agent):
-        fitness = []
-        for test in range(args.total_test_with_same_param):
-            #-----------------------
-            outP = run_task(param[gene_num], args)
-            #-----------------------
-            if outP['fitnessScore'] is not None:
-                fitness.append(outP['fitnessScore'])    
+        for gene_num in range(args.total_testsGene_with_same_agent):
+            fitness = []
+            for test in range(args.total_test_with_same_param):
+                try:
+                    #-----------------------
+                    outP = run_task(param[gene_num], args)
+                    #-----------------------
+                    if outP['fitnessScore'] is not None:
+                        fitness.append(outP['fitnessScore'])    
+                except Exception as e:
+                    print('Problem with the task number: ' + str(args.agent_test_num) + ' for agent: ' + str(args.agent_idx), flush=True)
+                    print('---------------------------------------------------------------------------------------------------------------', flush=True)
+                    print(e, flush=True)
+                    print('---------------------------------------------------------------------------------------------------------------', flush=True)
+                    fitness.append(None)
 
-        if len(fitness) > 0:
-            outP['fitnessScore'] = fitness
+            if len(fitness) > 0:
+                outP['fitnessScore'] = fitness
 
-        if not outP is None:
-            for k,v in outP.items():
-                param[gene_num][k] = v
+            if not outP is None:
+                for k,v in outP.items():
+                    param[gene_num][k] = v
 
     # except Exception as e:
         # print('Problem with the task number: ' + str(args.agent_test_num) + ' for agent: ' + str(args.agent_idx), flush=True)
