@@ -16,7 +16,7 @@ from classify_recalls import classify_recalls
 
 def run(parameters: dict):
   # If you want plots
-  PLOT = True
+  PLOT = False
 
   # If you want to save to disk
   SAVE = False
