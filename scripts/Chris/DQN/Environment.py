@@ -116,8 +116,8 @@ class Maze_Environment():
         self.path_history.append((self.agent_cell.coordinates, 1, True, action_num))
         return self.agent_cell, 1, True, {}
       else:
-        prev_trace = self.reward_trace[*prev_cell.coordinates]
-        new_trace = self.reward_trace[*self.agent_cell.coordinates]
+        prev_trace = self.reward_trace[prev_cell.coordinates]
+        new_trace = self.reward_trace[self.agent_cell.coordinates]
         reward = 1 if new_trace > prev_trace else 0
         self.path_history.append((self.agent_cell.coordinates, reward, False, action_num))
         return self.agent_cell, reward, False, {}

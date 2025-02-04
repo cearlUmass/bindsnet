@@ -16,7 +16,7 @@ from classify_recalls import classify_recalls
 
 def run(parameters: dict):
   # If you want plots
-  PLOT = False
+  PLOT = True
 
   # If you want to save to disk
   SAVE = False
@@ -103,14 +103,15 @@ def run(parameters: dict):
   return score
 
 if __name__ == '__main__':
+
   p = {
     "DECAY_INTENSITY": 3,
-    "EXC_SIZE": 2999,
+    "EXC_SIZE": 500,
     "GAMMA": 0.5,
     "GRID_CELL_DIST_MAX": 1.502,
     "GRID_CELL_DIST_MIN": 0.239,
     "GRID_CELL_RADIUS": 0.75,
-    "INH_SIZE": 1999,
+    "INH_SIZE": 100,
     "ALPHA": 0.01,
     "MAX_STEPS_PER_EP": 50,
     "MAX_TOTAL_STEPS": 4999,
@@ -137,7 +138,7 @@ if __name__ == '__main__':
     "tc_decay_out": 49,
     "tc_theta_decay_out": 2999,
     "theta_plus_out": 4,
-    "thresh_out": -54,
+    "thresh_out": -60,
   }
   r = {
     'NUM_CELLS': [5, 100],            # Integer

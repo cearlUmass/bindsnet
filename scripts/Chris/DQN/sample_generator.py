@@ -41,7 +41,7 @@ def sample_generator(scales, offsets, vars, x_range, y_range,
         x_sign = 1 if np.random.rand() > 0.5 else -1  # (slight variations in position)
         y_sign = 1 if np.random.rand() > 0.5 else -1
         pos = (i + np.random.rand() * noise * x_sign, j + np.random.rand() * noise * y_sign)
-        a, c = module.generate(pos)
+        a, c = module.activity(pos)
         if (i, j) not in sorted_samples:
           sorted_samples[(i, j)] = [a]
         else:

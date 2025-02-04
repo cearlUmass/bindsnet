@@ -6,7 +6,7 @@ import torch
 from itertools import count
 
 from matplotlib import pyplot as plt
-from triton.language import dtype
+# from triton.language import dtype
 
 from bindsnet.network import Network
 from bindsnet.network.monitors import Monitor
@@ -79,14 +79,18 @@ class STDP_RL_Model(Network):
     self.eligibility = torch.outer(in_activity, out_activity)
 
     # Update weights
+    alpha = 0.002
     if np.abs(delta_Q) < 1e-4:
       r = 0
     else:
       r = np.sign(delta_Q)
+    # self.weights.value[self.eligibility > 0] *= 0.99
+    self.weights.value += alpha * r * self.eligibility
     self.weights.value[self.w_mask == 0] = 0
     self.weights.value *= (1-self.decay)
     self.weights.value += self.lr * r * self.eligibility
     torch.clamp(self.weights.value, self.wmin, self.wmax)
+    print(self.weights.value.max())
 
   def update_table(self, state, action, next_state, reward):
     # Preprocess state for simpler indexing
@@ -178,6 +182,7 @@ def select_action(assoc_spikes, sim_time, out_size, eps, model, env):
       motor_pop_range = (action * motor_pop_size, action * motor_pop_size + motor_pop_size)
       motor_pop_spikes = torch.rand(sim_time, motor_pop_size) < 0.05
       out_spikes[:, motor_pop_range[0]:motor_pop_range[1]] = motor_pop_spikes
+      print("no spikes!")
     else:
       action = torch.argmax(out_spikes.reshape(sim_time, env.num_actions, motor_pop_size).sum(0).sum(1))
     model.reset_state_variables()
